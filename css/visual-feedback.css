@@ -1,0 +1,186 @@
+/**
+ * Musical Instrument Sandbox - Visual Feedback Styles
+ * 
+ * Reusable CSS animations for visual feedback.
+ * Use these classes with VisualManager or add them to your own elements!
+ */
+
+/* ========================================
+   PULSE ANIMATION
+   ======================================== */
+.visual-pulse {
+    animation: pulse-animation 0.5s ease-out;
+}
+
+@keyframes pulse-animation {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   RIPPLE EFFECT
+   ======================================== */
+.ripple {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    animation: ripple-animation 0.6s ease-out;
+    z-index: 1000;
+}
+
+@keyframes ripple-animation {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   SCREEN FLASH
+   ======================================== */
+@keyframes flash-animation {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   GLOW EFFECT
+   ======================================== */
+.glow {
+    animation: glow-animation 1s ease-in-out infinite;
+}
+
+@keyframes glow-animation {
+    0%, 100% {
+        box-shadow: 0 0 10px var(--glow-color, #00ff00);
+    }
+    50% {
+        box-shadow: 0 0 30px var(--glow-color, #00ff00);
+    }
+}
+
+/* ========================================
+   SHAKE EFFECT
+   ======================================== */
+.shake {
+    animation: shake-animation 0.5s ease-in-out;
+}
+
+@keyframes shake-animation {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+/* ========================================
+   FLOAT UP (for particles)
+   ======================================== */
+@keyframes float-up {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100px);
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   BOUNCE
+   ======================================== */
+.bounce {
+    animation: bounce-animation 0.6s ease-out;
+}
+
+@keyframes bounce-animation {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    25% {
+        transform: translateY(-20px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+    75% {
+        transform: translateY(-5px);
+    }
+}
+
+/* ========================================
+   FADE IN/OUT
+   ======================================== */
+.fade-in {
+    animation: fade-in-animation 0.3s ease-in;
+}
+
+.fade-out {
+    animation: fade-out-animation 0.3s ease-out;
+}
+
+@keyframes fade-in-animation {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out-animation {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   COLOR SHIFT (smooth color transitions)
+   ======================================== */
+.color-shift {
+    transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+/* ========================================
+   ROTATE
+   ======================================== */
+.rotate {
+    animation: rotate-animation 1s linear infinite;
+}
+
+@keyframes rotate-animation {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+

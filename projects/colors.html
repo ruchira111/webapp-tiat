@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+========================================
+INSTRUMENT METADATA
+========================================
+Artist: Dan Gorelick
+Date: Nov 30, 2025
+Instrument: Colorful Musical Instrument
+Description: A vibrant musical sandbox with rainbow visuals
+             Supports: Mouse, Keyboard, MIDI, Hand Tracking
+             Outputs: Tone.js, WebAudioFont (Organ, Choir, Vibes), MIDI Out
+
+Tags: #colorful #visual #all-inputs #all-outputs
+========================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorful Musical Instrument</title>
+    
+    <style>
+        /* Base styles */
+        * { box-sizing: border-box; }
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            font-size: 16px;
+            overflow: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, p { padding: 0; margin: 0; }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Visual feedback styles */
+        .ripple {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+            animation: ripple-animation 0.6s ease-out;
+            box-shadow: 0 0 20px currentColor;
+        }
+        
+        @keyframes ripple-animation {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes visual-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        
+        .visual-pulse {
+            animation: visual-pulse 0.3s ease-in-out;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px var(--glow-color); }
+            50% { box-shadow: 0 0 20px var(--glow-color); }
+        }
+        
+        .glow {
+            animation: glow 0.5s ease-in-out;
+        }
+        
+        /* Start screen */
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+        }
+        
+        #start-wrapper.hidden { display: none; }
+        
+        #start-button {
+            font-size: 1.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        #start-button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        #start-text {
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem 0;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+        
+        /* Top bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+        
+        .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 0 20px;
+            height: 45px;
+            line-height: 41px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .back-button:hover { 
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+        
+        select {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 0 15px;
+            height: 45px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 160px;
+            backdrop-filter: blur(10px);
+        }
+        
+        select:hover { 
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        option {
+            background-color: #2a2a3e;
+            color: #fff;
+        }
+        
+        optgroup {
+            background-color: #1a1a2e;
+            color: #aaa;
+            font-weight: bold;
+        }
+        
+        /* Note display (bottom left) - Now colorful! */
+        #note-display {
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            z-index: 999;
+        }
+        
+        .note-box {
+            width: 100px;
+            height: 100px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .note-name {
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .note-freq {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        /* Instructions (bottom center) */
+        #instructions {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 24px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Keyboard helper */
+        #keyboard-helper {
+            position: absolute;
+            top: 80px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 998;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #keyboard-helper.show { display: block; }
+        
+        .key-row {
+            display: flex;
+            gap: 4px;
+            margin: 4px 0;
+        }
+        
+        .key {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            min-width: 35px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        
+        /* Trail effect for mouse/finger movement */
+        .trail {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.6;
+            animation: fade-out 0.8s ease-out forwards;
+        }
+        
+        @keyframes fade-out {
+            to {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="start-wrapper">
+            <button id="start-button">🎵 Start Playing 🎵</button>
+            <div id="start-text">
+                <p>Click to begin your colorful musical journey!</p>
+                <p style="margin-top: 1rem; opacity: 0.8;">
+                    All inputs and outputs available • Visual rainbow feedback
+                </p>
+            </div>
+        </div>
+        
+        <div class="top-bar">
+            <a href="../../index.html" class="back-button">← Back</a>
+            <div class="title">🌈 Colorful Musical Instrument</div>
+            <div class="controls">
+                <span class="label">Input:</span>
+                <select id="input-select">
+                    <option value="mouse">🖱️ Mouse</option>
+                    <option value="keyboard">⌨️ Keyboard</option>
+                    <option value="midi">🎹 MIDI</option>
+                    <option value="mediapipe">👋 Hand Tracking</option>
+                </select>
+                
+                <span class="label">Output:</span>
+                <select id="output-select">
+                    <option value="tonejs">🔊 Tone.js</option>
+                    <optgroup label="🎹 WebAudioFont">
+                        <option value="webaudiofont:organ">  Organ</option>
+                        <option value="webaudiofont:choir">  Choir</option>
+                        <option value="webaudiofont:vibes">  Vibes</option>
+                    </optgroup>
+                    <option value="drums" disabled>🥁 Drums (soon)</option>
+                    <optgroup label="📡 MIDI Output" id="midi-out-group" style="display:none;">
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        
+        <div id="note-display">
+            <div class="note-box" id="noteBox">
+                <div class="note-name" id="noteName">-</div>
+                <div class="note-freq" id="noteFreq">Ready</div>
+            </div>
+        </div>
+        
+        <div id="instructions">
+            <span id="instructionText">Select input and output methods</span>
+        </div>
+        
+        <div id="keyboard-helper">
+            <p style="margin-bottom: 10px; font-weight: bold;">Keyboard:</p>
+            <div class="key-row">
+                <div class="key">2</div><div class="key">3</div><div class="key" style="opacity:0.3">-</div>
+                <div class="key">5</div><div class="key">6</div><div class="key">7</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div>
+                <div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div>
+            </div>
+            <div style="height:8px"></div>
+            <div class="key-row">
+                <div class="key">S</div><div class="key">D</div><div class="key" style="opacity:0.3">-</div>
+                <div class="key">G</div><div class="key">H</div><div class="key">J</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div>
+                <div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key">,</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- External libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="../../audio/soundfonts/WebAudioFont.js"></script>
+    <script src="../../audio/soundfonts/0161_SoundBlasterOld_sf2.js"></script>
+    <script src="../../audio/soundfonts/0530_Aspirin_sf2_file.js"></script>
+    <script src="../../audio/soundfonts/0110_Aspirin_sf2_file.js"></script>
+    
+    <!-- Sandbox modules -->
+    <script src="../../js/utils/math.js"></script>
+    <script src="../../js/audio/tone-engine.js"></script>
+    <script src="../../js/audio/webaudiofont-engine.js"></script>
+    <script src="../../js/audio/midi-output.js"></script>
+    <script src="../../js/audio/audio-output-manager.js"></script>
+    <script src="../../js/input/input-manager.js"></script>
+    <script src="../../js/input/mouse.js"></script>
+    <script src="../../js/input/keyboard.js"></script>
+    <script src="../../js/input/midi.js"></script>
+    <script src="../../js/input/mediapipe.js"></script>
+    
+    <!-- Inline Visual Manager with vibrant colors -->
+    <script>
+        class VisualManager {
+            constructor(container) {
+                this.container = container || document.body;
+            }
+
+            createRipple(x, y, color = null) {
+                const ripple = document.createElement('div');
+                ripple.className = 'ripple';
+                ripple.style.left = (x - 25) + 'px';
+                ripple.style.top = (y - 25) + 'px';
+                
+                // Use provided color or default to white
+                if (color) {
+                    ripple.style.background = color;
+                }
+
+                this.container.appendChild(ripple);
+
+                setTimeout(() => {
+                    if (ripple.parentNode) {
+                        ripple.remove();
+                    }
+                }, 600);
+            }
+
+            pulseElement(element) {
+                element.classList.add('visual-pulse');
+                setTimeout(() => {
+                    element.classList.remove('visual-pulse');
+                }, 300);
+            }
+
+            setNoteColor(element, midiNote, saturation = 90, lightness = 55) {
+                // Enhanced color mapping with full rainbow spectrum
+                const hue = this.mapNoteToHue(midiNote);
+                element.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                element.style.borderColor = `hsl(${hue}, ${saturation}%, ${lightness + 10}%)`;
+                element.style.boxShadow = `0 8px 32px hsla(${hue}, ${saturation}%, ${lightness}%, 0.4)`;
+            }
+            
+            mapNoteToHue(midiNote) {
+                // Map MIDI notes to full color spectrum (0-360 degrees)
+                // Lower notes = warm colors (red, orange, yellow)
+                // Middle notes = green, cyan, blue
+                // Higher notes = purple, violet, magenta
+                const normalizedNote = ((midiNote - 21) % 12) / 12; // Map to 0-1 within octave
+                const octaveOffset = Math.floor((midiNote - 21) / 12) * 30; // Add variation per octave
+                return ((normalizedNote * 300) + octaveOffset) % 360;
+            }
+            
+            getNoteColor(midiNote, saturation = 90, lightness = 55) {
+                const hue = this.mapNoteToHue(midiNote);
+                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            }
+        }
+
+        window.VisualManager = VisualManager;
+    </script>
+    
+    <script>
+        // ========================================
+        // COLORFUL MUSICAL INSTRUMENT
+        // ========================================
+        
+        let outputManager, inputManager, visualManager;
+        let initialized = false;
+        
+        const mediaPipeConfig = {
+            lineY: 0.5,
+            fingerTips: [8],
+            triggerMode: 'cross',
+            minNote: 48,
+            maxNote: 84,
+            showLine: true,
+            showFingerDots: true,
+            showVideo: true
+        };
+        
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            document.getElementById('start-wrapper').classList.add('hidden');
+            
+            outputManager = new AudioOutputManager();
+            await outputManager.init();
+            
+            inputManager = new InputManager();
+            visualManager = new VisualManager(document.getElementById('wrapper'));
+            
+            await setupInput('mouse');
+            await setupOutput('tonejs', {});
+            
+            inputManager.addEventListener('note-on', handleNoteOn);
+            
+            // Check for MIDI output devices
+            checkMidiOutputs();
+            
+            console.log('✅ Ready! Let the colors flow!');
+        }
+        
+        async function checkMidiOutputs() {
+            try {
+                const devices = await outputManager.getMidiOutputDevices();
+                if (devices.length > 0) {
+                    const group = document.getElementById('midi-out-group');
+                    group.style.display = '';
+                    devices.forEach(dev => {
+                        const opt = document.createElement('option');
+                        opt.value = `midiout:${dev.id}`;
+                        opt.textContent = `  ${dev.name}`;
+                        group.appendChild(opt);
+                    });
+                }
+            } catch(e) {}
+        }
+        
+        function handleNoteOn(e) {
+            const { note, velocity, x, y } = e.detail;
+            
+            outputManager.playNote(note, 0.5, velocity);
+            
+            // Get vibrant color for this note
+            const noteColor = visualManager.getNoteColor(note, 90, 60);
+            
+            if (x && y) {
+                visualManager.createRipple(x, y, noteColor);
+            } else {
+                const noteX = map(note, 21, 108, 100, window.innerWidth - 100);
+                visualManager.createRipple(noteX, window.innerHeight / 2, noteColor);
+            }
+            
+            const noteName = Tone.Frequency(note, 'midi').toNote();
+            const freq = Tone.Frequency(note, 'midi').toFrequency();
+            document.getElementById('noteName').textContent = noteName;
+            document.getElementById('noteFreq').textContent = freq.toFixed(1) + ' Hz';
+            
+            const noteBox = document.getElementById('noteBox');
+            visualManager.pulseElement(noteBox);
+            visualManager.setNoteColor(noteBox, note, 90, 55);
+        }
+        
+        async function setupInput(type) {
+            inputManager.disableAll();
+            const helper = document.getElementById('keyboard-helper');
+            
+            try {
+                switch(type) {
+                    case 'mouse':
+                        await inputManager.enableInput('mouse', { mode: 'trigger' });
+                        document.getElementById('instructionText').textContent = 
+                            'Click anywhere • Left = low notes, Right = high notes';
+                        helper.classList.remove('show');
+                        break;
+                    case 'keyboard':
+                        await inputManager.enableInput('keyboard', { layout: 'piano' });
+                        document.getElementById('instructionText').textContent = 
+                            'Piano keyboard • QWERTY = white keys';
+                        helper.classList.add('show');
+                        break;
+                    case 'midi':
+                        await inputManager.enableInput('midi');
+                        document.getElementById('instructionText').textContent = 
+                            'MIDI controller connected';
+                        helper.classList.remove('show');
+                        break;
+                    case 'mediapipe':
+                        await inputManager.enableInput('mediapipe', mediaPipeConfig);
+                        document.getElementById('instructionText').textContent = 
+                            'Move finger across green line';
+                        helper.classList.remove('show');
+                        break;
+                }
+            } catch(error) {
+                alert(`Input error: ${error.message}\nFalling back to mouse.`);
+                document.getElementById('input-select').value = 'mouse';
+                await setupInput('mouse');
+            }
+        }
+        
+        async function setupOutput(type, config) {
+            try {
+                await outputManager.setOutput(type, config);
+                console.log(`🔊 Output: ${type}`, config);
+            } catch(error) {
+                alert(`Output error: ${error.message}\nFalling back to Tone.js.`);
+                document.getElementById('output-select').value = 'tonejs';
+                await setupOutput('tonejs', {});
+            }
+        }
+        
+        // Events
+        document.getElementById('start-button').addEventListener('click', init);
+        
+        document.getElementById('input-select').addEventListener('change', async (e) => {
+            if (!initialized) await init();
+            await setupInput(e.target.value);
+        });
+        
+        document.getElementById('output-select').addEventListener('change', async (e) => {
+            if (!initialized) await init();
+            const val = e.target.value;
+            if (val.includes(':')) {
+                const [type, cfg] = val.split(':');
+                await setupOutput(type, type === 'webaudiofont' ? { instrument: cfg } : { deviceId: cfg });
+            } else {
+                await setupOutput(val, {});
+            }
+        });
+    </script>
+</body>
+</html>

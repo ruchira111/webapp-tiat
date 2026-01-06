@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+========================================
+INSTRUMENT METADATA
+========================================
+Artist: Dan Gorelick
+Date: Nov 30, 2025
+Instrument: Theremin
+Description: Classic electronic instrument controlled by hand position
+             Mouse: Click and drag to control pitch
+             MediaPipe: Left hand = volume, Right hand = pitch
+
+Tags: #theremin #continuous #mediapipe
+========================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theremin - Musical Instrument Sandbox</title>
+    
+    <!-- Load base styles -->
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/visual-feedback.css">
+    
+    <style>
+        body {
+            background-color: #000;
+            overflow: hidden;
+        }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Start screen */
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        #start-wrapper.hidden {
+            display: none;
+        }
+        
+        #start-button {
+            font-size: 1.3rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #start-button:hover {
+            background-color: #45a049;
+        }
+        
+        #start-text {
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem 0;
+            line-height: 1.6;
+        }
+        
+        /* Top bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+        
+        .back-button {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 15px;
+            height: 40px;
+            line-height: 40px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.1s;
+        }
+        
+        .back-button:hover {
+            background-color: #555;
+        }
+        
+        .title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+        
+        .input-dropdown {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 12px;
+            height: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 160px;
+        }
+        
+        .input-dropdown:hover {
+            background-color: #555;
+        }
+        
+        /* Info display (bottom left) */
+        #info {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 1.5rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+            z-index: 999;
+            font-family: monospace;
+        }
+        
+        /* Instructions (bottom center) */
+        #instructions {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        /* Frequency indicator (center) */
+        #frequency-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6rem;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: monospace;
+            pointer-events: none;
+            transition: all 0.1s;
+        }
+        
+        /* Volume bar (left side) */
+        #volume-bar {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 60%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        #volume-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #4caf50, #8bc34a);
+            transition: height 0.05s;
+            height: 50%;
+        }
+        
+        /* Pitch bar (top) */
+        #pitch-bar {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        #pitch-fill {
+            position: absolute;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(to right, #2196f3, #03a9f4);
+            transition: width 0.05s;
+            width: 50%;
+        }
+        
+        /* Playing indicator */
+        .playing #wrapper {
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Start screen -->
+        <div id="start-wrapper">
+            <button id="start-button">Start</button>
+            <div id="start-text">
+                <p><strong>Theremin</strong></p>
+                <p>A classic electronic instrument controlled by hand position</p>
+            </div>
+        </div>
+        
+        <!-- Top bar -->
+        <div class="top-bar">
+            <a href="../../index.html" class="back-button">← Back</a>
+            <div class="title">Example 2: Theremin</div>
+            <select class="input-dropdown" id="input-selector">
+                <option value="mouse">🖱️ Mouse</option>
+                <option value="mediapipe">👋 Hand Tracking</option>
+            </select>
+        </div>
+        
+        <!-- Frequency display -->
+        <div id="frequency-display">- Hz</div>
+        
+        <!-- Volume bar -->
+        <div id="volume-bar">
+            <div id="volume-fill"></div>
+        </div>
+        
+        <!-- Pitch bar -->
+        <div id="pitch-bar">
+            <div id="pitch-fill"></div>
+        </div>
+        
+        <!-- Info display -->
+        <div id="info">
+            <div>Frequency: <span id="freq-value">-</span> Hz</div>
+            <div>Volume: <span id="vol-value">-</span>%</div>
+        </div>
+        
+        <!-- Instructions -->
+        <div id="instructions">
+            <span id="instruction-text">Select an input method to begin</span>
+        </div>
+    </div>
+    
+    <!-- Load Tone.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Load MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    
+    <!-- Load utilities -->
+    <script src="../../js/utils/math.js"></script>
+    
+    <script>
+        // ========================================
+        // THEREMIN CONFIGURATION
+        // Change these values to customize!
+        // ========================================
+        
+        const CONFIG = {
+            // Frequency range (Hz)
+            minFreq: 200,
+            maxFreq: 2000,
+            
+            // Volume range
+            minVolume: 0.0,
+            maxVolume: 0.8,
+            
+            // Synth settings
+            synthType: 'sine',  // Try: 'sine', 'square', 'sawtooth', 'triangle'
+            
+            // MediaPipe: Which hand does what?
+            mediapipe: {
+                leftHandControl: 'volume',   // Left hand controls volume
+                rightHandControl: 'pitch',   // Right hand controls pitch
+                handLandmark: 9,             // Middle of palm (9) or fingertip (8)
+                smoothing: 0.1               // How smooth (0-1, higher = smoother)
+            }
+        };
+        
+        // ========================================
+        // THEREMIN CODE
+        // ========================================
+        
+        let theremin;
+        let currentInput = 'mouse';
+        let initialized = false;
+        let isPlaying = false;
+        
+        let currentFreq = 440;
+        let currentVolume = 0.5;
+        
+        // MediaPipe state
+        let hands;
+        let camera;
+        let videoElement;
+        let videoCanvas;
+        
+        // Initialize
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            document.getElementById('start-wrapper').classList.add('hidden');
+            
+            // Start Tone.js
+            await Tone.start();
+            
+            // Create theremin synth
+            theremin = new Tone.Synth({
+                oscillator: {
+                    type: CONFIG.synthType
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 1,
+                    release: 0.5
+                }
+            }).toDestination();
+            
+            // Setup initial input
+            await setupInput('mouse');
+            
+            console.log('✅ Theremin ready!');
+        }
+        
+        // Setup input method
+        async function setupInput(type) {
+            currentInput = type;
+            
+            // Stop playing
+            stopTheremin();
+            
+            // Clean up previous input
+            if (type === 'mouse') {
+                cleanupMediaPipe();
+                setupMouseInput();
+            } else if (type === 'mediapipe') {
+                cleanupMouseInput();
+                await setupMediaPipeInput();
+            }
+        }
+        
+        // ========================================
+        // MOUSE INPUT
+        // ========================================
+        
+        let mouseListeners = [];
+        
+        function setupMouseInput() {
+            document.getElementById('instruction-text').textContent = 
+                'Click and drag • Left = Low pitch, Right = High pitch, Up/Down = Volume';
+            
+            const handleMouseDown = (e) => {
+                startTheremin();
+                updateFromMouse(e);
+            };
+            
+            const handleMouseMove = (e) => {
+                if (isPlaying) {
+                    updateFromMouse(e);
+                }
+            };
+            
+            const handleMouseUp = () => {
+                stopTheremin();
+            };
+            
+            document.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            mouseListeners = [
+                { event: 'mousedown', handler: handleMouseDown },
+                { event: 'mousemove', handler: handleMouseMove },
+                { event: 'mouseup', handler: handleMouseUp }
+            ];
+        }
+        
+        function updateFromMouse(e) {
+            // X position = pitch (left = low, right = high)
+            const normalizedX = e.clientX / window.innerWidth;
+            currentFreq = map(normalizedX, 0, 1, CONFIG.minFreq, CONFIG.maxFreq);
+            
+            // Y position = volume (top = quiet, bottom = loud)
+            const normalizedY = 1 - (e.clientY / window.innerHeight);
+            currentVolume = map(normalizedY, 0, 1, CONFIG.minVolume, CONFIG.maxVolume);
+            
+            updateTheremin();
+        }
+        
+        function cleanupMouseInput() {
+            mouseListeners.forEach(({ event, handler }) => {
+                document.removeEventListener(event, handler);
+            });
+            mouseListeners = [];
+        }
+        
+        // ========================================
+        // MEDIAPIPE INPUT
+        // ========================================
+        
+        async function setupMediaPipeInput() {
+            document.getElementById('instruction-text').textContent = 
+                'Left hand (up/down) = Volume • Right hand (left/right) = Pitch';
+            
+            // Create video element
+            videoElement = document.createElement('video');
+            videoElement.style.display = 'none';
+            document.body.appendChild(videoElement);
+            
+            // Create video canvas for debug view
+            videoCanvas = document.createElement('canvas');
+            videoCanvas.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 240px;
+                height: 180px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                z-index: 998;
+            `;
+            videoCanvas.width = 640;
+            videoCanvas.height = 480;
+            document.body.appendChild(videoCanvas);
+            
+            // Initialize MediaPipe
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+            
+            hands.setOptions({
+                maxNumHands: 2,              // Track BOTH hands
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            hands.onResults(onHandsDetected);
+            
+            // Start camera
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+            
+            await camera.start();
+            console.log('✅ MediaPipe initialized (2 hands)');
+        }
+        
+        function onHandsDetected(results) {
+            // Draw video + hands
+            const ctx = videoCanvas.getContext('2d');
+            ctx.clearRect(0, 0, 640, 480);
+            
+            // Draw mirrored video
+            ctx.save();
+            ctx.translate(640, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(results.image, 0, 0, 640, 480);
+            ctx.restore();
+            
+            // Draw hand skeletons
+            if (results.multiHandLandmarks && results.multiHandedness) {
+                let leftHand = null;
+                let rightHand = null;
+                
+                // Identify left and right hands
+                results.multiHandedness.forEach((hand, index) => {
+                    const label = hand.label; // "Left" or "Right"
+                    const landmarks = results.multiHandLandmarks[index];
+                    
+                    // Note: MediaPipe labels are from camera's perspective
+                    // When mirrored, "Left" appears on right side
+                    if (label === 'Right') {  // This is the LEFT hand in mirror
+                        leftHand = landmarks;
+                        drawHandSkeleton(ctx, landmarks, '#4caf50'); // Green
+                    } else {
+                        rightHand = landmarks;
+                        drawHandSkeleton(ctx, landmarks, '#2196f3'); // Blue
+                    }
+                });
+                
+                // Process hands
+                if (leftHand || rightHand) {
+                    if (!isPlaying) {
+                        startTheremin();
+                    }
+                    updateFromHands(leftHand, rightHand);
+                } else {
+                    stopTheremin();
+                }
+            } else {
+                stopTheremin();
+            }
+        }
+        
+        function updateFromHands(leftHand, rightHand) {
+            // Left hand controls VOLUME (up/down)
+            if (leftHand) {
+                const palm = leftHand[CONFIG.mediapipe.handLandmark];
+                if (palm && typeof palm.y === 'number' && !isNaN(palm.y)) {
+                    // Y position: top = 0, bottom = 1
+                    // We want bottom = loudest, so invert
+                    const volumePos = 1 - palm.y;
+                    currentVolume = map(volumePos, 0, 1, CONFIG.minVolume, CONFIG.maxVolume);
+                }
+            }
+            
+            // Right hand controls PITCH (left/right)
+            if (rightHand) {
+                const palm = rightHand[CONFIG.mediapipe.handLandmark];
+                if (palm && typeof palm.x === 'number' && !isNaN(palm.x)) {
+                    // X position: left = 0, right = 1
+                    // Flip because of mirroring (left = low, right = high)
+                    const pitchPos = 1 - palm.x;  // Flip so right = high pitch
+                    currentFreq = map(pitchPos, 0, 1, CONFIG.minFreq, CONFIG.maxFreq);
+                }
+            }
+            
+            updateTheremin();
+        }
+        
+        function drawHandSkeleton(ctx, landmarks, color) {
+            // Draw connections
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4],
+                [0, 5], [5, 6], [6, 7], [7, 8],
+                [0, 9], [9, 10], [10, 11], [11, 12],
+                [0, 13], [13, 14], [14, 15], [15, 16],
+                [0, 17], [17, 18], [18, 19], [19, 20],
+                [5, 9], [9, 13], [13, 17]
+            ];
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            
+            connections.forEach(([start, end]) => {
+                const s = landmarks[start];
+                const e = landmarks[end];
+                // Flip X axis for mirroring
+                const sx = (1 - s.x) * 640;
+                const ex = (1 - e.x) * 640;
+                ctx.beginPath();
+                ctx.moveTo(sx, s.y * 480);
+                ctx.lineTo(ex, e.y * 480);
+                ctx.stroke();
+            });
+            
+            // Draw landmarks
+            landmarks.forEach((landmark, i) => {
+                // Flip X axis for mirroring
+                const x = (1 - landmark.x) * 640;
+                ctx.beginPath();
+                ctx.arc(x, landmark.y * 480, 4, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+            });
+        }
+        
+        function cleanupMediaPipe() {
+            if (camera) {
+                camera.stop();
+                camera = null;
+            }
+            if (hands) {
+                hands.close();
+                hands = null;
+            }
+            if (videoElement) {
+                videoElement.remove();
+                videoElement = null;
+            }
+            if (videoCanvas) {
+                videoCanvas.remove();
+                videoCanvas = null;
+            }
+        }
+        
+        // ========================================
+        // THEREMIN CONTROL
+        // ========================================
+        
+        function startTheremin() {
+            if (!isPlaying) {
+                theremin.triggerAttack(currentFreq);
+                isPlaying = true;
+                document.body.classList.add('playing');
+            }
+        }
+        
+        function stopTheremin() {
+            if (isPlaying) {
+                theremin.triggerRelease();
+                isPlaying = false;
+                document.body.classList.remove('playing');
+            }
+        }
+        
+        function updateTheremin() {
+            if (!isPlaying) return;
+            
+            // Guard against NaN values
+            if (isNaN(currentFreq) || currentFreq <= 0) {
+                currentFreq = 440; // Default to A4
+            }
+            if (isNaN(currentVolume) || currentVolume < 0) {
+                currentVolume = 0.5; // Default to 50%
+            }
+            
+            // Clamp values to safe ranges
+            currentFreq = Math.max(CONFIG.minFreq, Math.min(CONFIG.maxFreq, currentFreq));
+            currentVolume = Math.max(CONFIG.minVolume, Math.min(CONFIG.maxVolume, currentVolume));
+            
+            // Smooth frequency changes
+            theremin.frequency.rampTo(currentFreq, CONFIG.mediapipe.smoothing);
+            
+            // Smooth volume changes
+            // Ensure volume is > 0 before converting to dB
+            const safeVolume = Math.max(0.001, currentVolume);
+            const volumeDb = Tone.gainToDb(safeVolume);
+            theremin.volume.rampTo(volumeDb, CONFIG.mediapipe.smoothing);
+            
+            // Update UI
+            updateDisplay();
+        }
+        
+        function updateDisplay() {
+            // Frequency display
+            document.getElementById('frequency-display').textContent = 
+                currentFreq.toFixed(0) + ' Hz';
+            document.getElementById('freq-value').textContent = 
+                currentFreq.toFixed(1);
+            
+            // Volume display
+            document.getElementById('vol-value').textContent = 
+                Math.floor(currentVolume * 100);
+            
+            // Volume bar
+            document.getElementById('volume-fill').style.height = 
+                (currentVolume / CONFIG.maxVolume * 100) + '%';
+            
+            // Pitch bar
+            const pitchPercent = map(currentFreq, CONFIG.minFreq, CONFIG.maxFreq, 0, 100);
+            document.getElementById('pitch-fill').style.width = pitchPercent + '%';
+            
+            // Color based on frequency
+            const hue = map(currentFreq, CONFIG.minFreq, CONFIG.maxFreq, 180, 300);
+            document.getElementById('frequency-display').style.color = 
+                `hsla(${hue}, 70%, 50%, 0.5)`;
+        }
+        
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+        
+        // Start button
+        document.getElementById('start-button').addEventListener('click', init);
+        
+        // Input selector
+        document.getElementById('input-selector').addEventListener('change', async (e) => {
+            if (!initialized) await init();
+            await setupInput(e.target.value);
+        });
+        
+        // ========================================
+        // CUSTOMIZATION EXAMPLES (for students)
+        // ========================================
+        
+        // Want different frequency range?
+        // Change CONFIG.minFreq and CONFIG.maxFreq above
+        
+        // Want different synth sound?
+        // Change CONFIG.synthType to 'square', 'sawtooth', or 'triangle'
+        
+        // Want to swap hand controls?
+        // Change CONFIG.mediapipe.leftHandControl to 'pitch'
+        // Change CONFIG.mediapipe.rightHandControl to 'volume'
+        
+        // Want to track different part of hand?
+        // Change CONFIG.mediapipe.handLandmark:
+        //   0 = wrist, 8 = index tip, 9 = middle of palm
+        
+    </script>
+</body>
+</html>
+

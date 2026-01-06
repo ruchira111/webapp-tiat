@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+========================================
+YOUR PROJECT TEMPLATE
+========================================
+This is YOUR space to create!
+
+INSTRUCTIONS FOR STUDENTS:
+1. Copy this ENTIRE file
+2. Paste into ChatGPT/Claude/any LLM
+3. Tell it what you want to build
+4. The LLM has ALL the context it needs to help you!
+
+INCLUDED IN THIS TEMPLATE:
+- ✅ All audio libraries (Tone.js, WebAudioFont)
+- ✅ All input systems (Mouse, Keyboard, MIDI, MediaPipe hand tracking)
+- ✅ All output systems (Tone.js synths, WebAudioFont instruments, MIDI out)
+- ✅ Math utilities (map, clamp, MIDI conversion, etc.)
+- ✅ Visual feedback systems
+- ✅ Helpful comments and examples
+
+YOUR METADATA (fill this in!):
+Artist: [Your Name]
+Date: [Today's Date]
+Instrument: [What are you building?]
+Description: [Describe your instrument]
+Tags: [Add some tags like #theremin #sequencer #experimental]
+========================================
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Musical Instrument - Musical Instrument Sandbox</title>
+    <!-- Load only visual feedback CSS -->
+    <link rel="stylesheet" href="../../css/visual-feedback.css">
+
+    <style>
+        /* Base styles */
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #eee;
+            font-size: 16px;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        p {
+            padding: 0;
+            margin: 0;
+        }
+
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Start screen */
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+
+        #start-wrapper.hidden {
+            display: none;
+        }
+
+        #start-button {
+            font-size: 1.3rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #start-button:hover {
+            background-color: #45a049;
+        }
+
+        #start-text {
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem 0;
+            line-height: 1.6;
+        }
+
+        /* Top bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .back-button {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 15px;
+            height: 40px;
+            line-height: 40px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        .back-button:hover {
+            background-color: #555;
+        }
+
+        .title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        select {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 12px;
+            height: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        select:hover {
+            background-color: #555;
+        }
+
+        option {
+            background-color: #2a2a2a;
+            color: #fff;
+        }
+
+        optgroup {
+            background-color: #1a1a1a;
+            color: #aaa;
+            font-weight: bold;
+        }
+
+        /* Note display (bottom left) */
+        #note-display {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 1.5rem;
+            z-index: 999;
+        }
+
+        .note-box {
+            width: 80px;
+            height: 80px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .note-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .note-freq {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Instructions (bottom center) */
+        #instructions {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* Keyboard helper */
+        #keyboard-helper {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 998;
+            display: none;
+        }
+
+        #keyboard-helper.show {
+            display: block;
+        }
+
+        .key-row {
+            display: flex;
+            gap: 3px;
+            margin: 3px 0;
+        }
+
+        .key {
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            min-width: 30px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrapper">
+        <div id="start-wrapper">
+            <button id="start-button">Start</button>
+            <div id="start-text">
+                <p>Click to begin</p>
+                <p>All inputs and outputs available!</p>
+            </div>
+        </div>
+
+        <div class="top-bar">
+            <a href="../../index.html" class="back-button">← Back</a>
+            <div class="title">Example 1: [[Your Project Name Here]]</div>
+            <div class="controls">
+                <span class="label">Input:</span>
+                <select id="input-select">
+                    <option value="mouse">🖱️ Mouse</option>
+                    <option value="keyboard">⌨️ Keyboard</option>
+                    <option value="midi">🎹 MIDI</option>
+                    <option value="mediapipe">👋 Hand Tracking</option>
+                </select>
+
+                <span class="label">Output:</span>
+                <select id="output-select">
+                    <option value="tonejs">🔊 Tone.js</option>
+                    <optgroup label="🎹 WebAudioFont">
+                        <option value="webaudiofont:organ"> Organ</option>
+                        <option value="webaudiofont:choir"> Choir</option>
+                        <option value="webaudiofont:vibes"> Vibes</option>
+                    </optgroup>
+                    <option value="drums" disabled>🥁 Drums (soon)</option>
+                    <optgroup label="📡 MIDI Output" id="midi-out-group" style="display:none;">
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+
+        <div id="note-display">
+            <div class="note-box" id="noteBox">
+                <div class="note-name" id="noteName">-</div>
+                <div class="note-freq" id="noteFreq">Ready</div>
+            </div>
+        </div>
+
+        <div id="instructions">
+            <span id="instructionText">Select input and output methods</span>
+        </div>
+
+        <div id="keyboard-helper">
+            <p>Keyboard:</p>
+            <div class="key-row">
+                <div class="key">2</div>
+                <div class="key">3</div>
+                <div class="key" style="opacity:0.3">-</div>
+                <div class="key">5</div>
+                <div class="key">6</div>
+                <div class="key">7</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Q</div>
+                <div class="key">W</div>
+                <div class="key">E</div>
+                <div class="key">R</div>
+                <div class="key">T</div>
+                <div class="key">Y</div>
+                <div class="key">U</div>
+                <div class="key">I</div>
+            </div>
+            <div style="height:5px"></div>
+            <div class="key-row">
+                <div class="key">S</div>
+                <div class="key">D</div>
+                <div class="key" style="opacity:0.3">-</div>
+                <div class="key">G</div>
+                <div class="key">H</div>
+                <div class="key">J</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Z</div>
+                <div class="key">X</div>
+                <div class="key">C</div>
+                <div class="key">V</div>
+                <div class="key">B</div>
+                <div class="key">N</div>
+                <div class="key">M</div>
+                <div class="key">,</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="../../audio/soundfonts/WebAudioFont.js"></script>
+    <script src="../../audio/soundfonts/0161_SoundBlasterOld_sf2.js"></script>
+    <script src="../../audio/soundfonts/0530_Aspirin_sf2_file.js"></script>
+    <script src="../../audio/soundfonts/0110_Aspirin_sf2_file.js"></script>
+
+    <!-- Sandbox modules -->
+    <script src="../../js/utils/math.js"></script>
+    <script src="../../js/audio/tone-engine.js"></script>
+    <script src="../../js/audio/webaudiofont-engine.js"></script>
+    <script src="../../js/audio/midi-output.js"></script>
+    <script src="../../js/audio/audio-output-manager.js"></script>
+    <script src="../../js/visuals/visual-manager.js"></script>
+    <script src="../../js/input/input-manager.js"></script>
+    <script src="../../js/input/mouse.js"></script>
+    <script src="../../js/input/keyboard.js"></script>
+    <script src="../../js/input/midi.js"></script>
+    <script src="../../js/input/mediapipe.js"></script>
+
+    <script>
+        // ========================================
+        // EXAMPLE 1: HELLO WORLD / SIMPLE BEEPS COPY
+        // ========================================
+
+        let outputManager, inputManager, visualManager;
+        let initialized = false;
+
+        const mediaPipeConfig = {
+            lineY: 0.5,
+            fingerTips: [8],
+            triggerMode: 'cross',
+            minNote: 48,
+            maxNote: 84,
+            showLine: true,
+            showFingerDots: true,
+            showVideo: true
+        };
+
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+
+            document.getElementById('start-wrapper').classList.add('hidden');
+
+            outputManager = new AudioOutputManager();
+            await outputManager.init();
+
+            inputManager = new InputManager();
+            visualManager = new VisualManager(document.getElementById('wrapper'));
+
+            await setupInput('mouse');
+            await setupOutput('tonejs', {});
+
+            inputManager.addEventListener('note-on', handleNoteOn);
+
+            // Check for MIDI output devices
+            checkMidiOutputs();
+
+            console.log('✅ Ready!');
+        }
+
+        async function checkMidiOutputs() {
+            try {
+                const devices = await outputManager.getMidiOutputDevices();
+                if (devices.length > 0) {
+                    const group = document.getElementById('midi-out-group');
+                    group.style.display = '';
+                    devices.forEach(dev => {
+                        const opt = document.createElement('option');
+                        opt.value = `midiout:${dev.id}`;
+                        opt.textContent = `  ${dev.name}`;
+                        group.appendChild(opt);
+                    });
+                }
+            } catch (e) { }
+        }
+
+        function handleNoteOn(e) {
+            const { note, velocity, x, y } = e.detail;
+
+            outputManager.playNote(note, 0.5, velocity);
+
+            if (x && y) {
+                visualManager.createRipple(x, y);
+            } else {
+                const noteX = map(note, 21, 108, 100, window.innerWidth - 100);
+                visualManager.createRipple(noteX, window.innerHeight / 2);
+            }
+
+            const noteName = Tone.Frequency(note, 'midi').toNote();
+            const freq = Tone.Frequency(note, 'midi').toFrequency();
+            document.getElementById('noteName').textContent = noteName;
+            document.getElementById('noteFreq').textContent = freq.toFixed(1) + ' Hz';
+
+            const noteBox = document.getElementById('noteBox');
+            visualManager.pulseElement(noteBox);
+            visualManager.setNoteColor(noteBox, note, 70, 60);
+        }
+
+        async function setupInput(type) {
+            inputManager.disableAll();
+            const helper = document.getElementById('keyboard-helper');
+
+            try {
+                switch (type) {
+                    case 'mouse':
+                        await inputManager.enableInput('mouse', { mode: 'trigger' });
+                        document.getElementById('instructionText').textContent =
+                            'Click anywhere • Left = low, Right = high';
+                        helper.classList.remove('show');
+                        break;
+                    case 'keyboard':
+                        await inputManager.enableInput('keyboard', { layout: 'piano' });
+                        document.getElementById('instructionText').textContent =
+                            'Piano keyboard • QWERTY = white keys';
+                        helper.classList.add('show');
+                        break;
+                    case 'midi':
+                        await inputManager.enableInput('midi');
+                        document.getElementById('instructionText').textContent =
+                            'MIDI controller connected';
+                        helper.classList.remove('show');
+                        break;
+                    case 'mediapipe':
+                        await inputManager.enableInput('mediapipe', mediaPipeConfig);
+                        document.getElementById('instructionText').textContent =
+                            'Move finger across green line';
+                        helper.classList.remove('show');
+                        break;
+                }
+            } catch (error) {
+                alert(`Input error: ${error.message}\nFalling back to mouse.`);
+                document.getElementById('input-select').value = 'mouse';
+                await setupInput('mouse');
+            }
+        }
+
+        async function setupOutput(type, config) {
+            try {
+                await outputManager.setOutput(type, config);
+                console.log(`🔊 Output: ${type}`, config);
+            } catch (error) {
+                alert(`Output error: ${error.message}\nFalling back to Tone.js.`);
+                document.getElementById('output-select').value = 'tonejs';
+                await setupOutput('tonejs', {});
+            }
+        }
+
+        // Events
+        document.getElementById('start-button').addEventListener('click', init);
+
+        document.getElementById('input-select').addEventListener('change', async (e) => {
+            if (!initialized) await init();
+            await setupInput(e.target.value);
+        });
+
+        document.getElementById('output-select').addEventListener('change', async (e) => {
+            if (!initialized) await init();
+            const val = e.target.value;
+            if (val.includes(':')) {
+                const [type, cfg] = val.split(':');
+                await setupOutput(type, type === 'webaudiofont' ? { instrument: cfg } : { deviceId: cfg });
+            } else {
+                await setupOutput(val, {});
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,335 @@
+/**
+ * Musical Instrument Sandbox - Example Layout Styles
+ * 
+ * Common styles for all example pages.
+ * Include this CSS file in your examples for consistent layout.
+ */
+
+/* Wrapper */
+#wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Start screen overlay */
+#start-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    position: relative;
+}
+
+#start-wrapper.hidden {
+    display: none;
+}
+
+#start-button {
+    font-size: 1.3rem;
+    padding: 0.8rem 1.5rem;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#start-button:hover {
+    background-color: #45a049;
+}
+
+#start-text {
+    text-align: center;
+    max-width: 600px;
+    margin: 2rem 0;
+    line-height: 1.6;
+}
+
+/* Top bar */
+.top-bar {
+    position: absolute;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+}
+
+/* Back button (top left) */
+.back-button {
+    background-color: #454545;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 0 15px;
+    height: 40px;
+    line-height: 40px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.1s linear;
+}
+
+.back-button:hover {
+    background-color: #555;
+}
+
+/* Title (top center) */
+.example-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    text-align: center;
+    user-select: none;
+}
+
+/* Input/Output selectors (dropdowns) */
+.input-dropdown,
+.output-dropdown {
+    background-color: #454545;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 0 12px 0 8px;
+    height: 40px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.1s linear;
+    min-width: 160px;
+}
+
+.input-dropdown:hover,
+.output-dropdown:hover {
+    background-color: #555;
+}
+
+.input-dropdown:focus,
+.output-dropdown:focus {
+    outline: 2px solid #4caf50;
+    outline-offset: 2px;
+}
+
+.output-dropdown {
+    margin-left: 10px;
+}
+
+/* Dropdown options */
+.input-dropdown option,
+.output-dropdown option {
+    background-color: #2a2a2a;
+    color: #fff;
+    padding: 8px;
+}
+
+.output-dropdown option:disabled {
+    color: #666;
+    font-style: italic;
+}
+
+/* Optgroup styling */
+.output-dropdown optgroup {
+    background-color: #1a1a1a;
+    color: #aaa;
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Input selector (legacy button support) */
+.input-selector {
+    display: flex;
+    gap: 0;
+}
+
+.input-button {
+    line-height: 40px;
+    text-align: center;
+    width: auto;
+    min-width: 120px;
+    height: 40px;
+    padding: 0 15px;
+    background-color: #454545;
+    transition: background-color 0.1s linear;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    color: #fff;
+    border-radius: 0;
+}
+
+.input-button:first-child {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.input-button:last-child {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.input-button.active {
+    background-color: #4caf50;
+}
+
+.input-button:hover {
+    background-color: #555;
+}
+
+.input-button.active:hover {
+    background-color: #45a049;
+}
+
+/* Note display (bottom left) */
+#output {
+    user-select: none;
+    position: absolute;
+    bottom: 1.8rem;
+    left: 1.5rem;
+    color: #fff;
+    font-size: 1.4rem;
+    z-index: 999;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.note-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.note-box {
+    width: 80px;
+    height: 80px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-right: 1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.note-name {
+    font-size: 24px;
+}
+
+.note-freq {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* Instructions (bottom center) */
+#instructions {
+    position: absolute;
+    bottom: 1.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+    text-align: center;
+    max-width: 500px;
+}
+
+/* Keyboard helper (top right, under top bar) */
+.keyboard-helper {
+    position: absolute;
+    top: 70px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 5px;
+    z-index: 998;
+    display: none;
+}
+
+.keyboard-helper.show {
+    display: block;
+}
+
+.keyboard-helper p {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.key-row {
+    display: flex;
+    gap: 3px;
+    margin: 3px 0;
+    justify-content: center;
+}
+
+.key {
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    min-width: 30px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .back-button {
+        font-size: 14px;
+        padding: 0 10px;
+        height: 35px;
+        line-height: 35px;
+    }
+    
+    .example-title {
+        font-size: 11px;
+        max-width: 200px;
+    }
+    
+    .input-button {
+        min-width: 60px;
+        font-size: 12px;
+        height: 35px;
+        line-height: 35px;
+        padding: 0 8px;
+    }
+    
+    #output {
+        font-size: 1rem;
+        bottom: 1rem;
+        left: 1rem;
+    }
+    
+    .note-box {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .note-name {
+        font-size: 18px;
+    }
+    
+    #instructions {
+        font-size: 0.75rem;
+        bottom: 1rem;
+    }
+    
+    .keyboard-helper {
+        top: 55px;
+        right: 5px;
+        padding: 10px;
+    }
+}
+

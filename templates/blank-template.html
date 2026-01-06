@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Musical Instrument</title>
+    
+    <!-- Load base styles -->
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/visual-feedback.css">
+    
+    <style>
+        /* Dark minimal theme */
+        body {
+            background-color: #000;
+        }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        #start-wrapper.hidden {
+            display: none;
+        }
+        
+        #start-button {
+            font-size: 1.3rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #start-button:hover {
+            background-color: #45a049;
+        }
+        
+        #output {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 1.5rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.4rem;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Start screen -->
+        <div id="start-wrapper">
+            <button id="start-button">Start</button>
+        </div>
+        
+        <!-- Your UI here -->
+        <div id="output">
+            <div id="status">Ready</div>
+        </div>
+    </div>
+    
+    <!-- Load Tone.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Load Musical Instrument Sandbox modules -->
+    <script src="../js/utils/math.js"></script>
+    <script src="../js/audio/tone-engine.js"></script>
+    <script src="../js/visuals/visual-manager.js"></script>
+    <script src="../js/input/input-manager.js"></script>
+    <script src="../js/input/mouse.js"></script>
+    <script src="../js/input/keyboard.js"></script>
+    <script src="../js/input/midi.js"></script>
+    
+    <script>
+        // ========================================
+        // YOUR CODE STARTS HERE
+        // ========================================
+        
+        let audioEngine;
+        let inputManager;
+        let visualManager;
+        let initialized = false;
+        
+        // Initialize (must be called after user interaction)
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            console.log('🎵 Initializing...');
+            
+            // Hide start screen
+            document.getElementById('start-wrapper').classList.add('hidden');
+            
+            // Setup audio
+            audioEngine = new ToneEngine();
+            await audioEngine.init();
+            
+            // Setup input
+            inputManager = new InputManager();
+            await inputManager.enableInput('mouse'); // or 'keyboard', 'midi'
+            
+            // Setup visuals
+            visualManager = new VisualManager(document.getElementById('wrapper'));
+            
+            // Listen for events
+            inputManager.addEventListener('note-on', (e) => {
+                const { note, velocity, x, y } = e.detail;
+                
+                // Play sound
+                audioEngine.playNote(note, 0.5, velocity);
+                
+                // Show visual feedback
+                if (x && y) {
+                    visualManager.createRipple(x, y);
+                }
+                
+                // Update status
+                const noteName = Tone.Frequency(note, 'midi').toNote();
+                document.getElementById('status').textContent = noteName;
+            });
+            
+            document.getElementById('status').textContent = 'Ready';
+            console.log('✅ Ready!');
+        }
+        
+        // Start button
+        document.getElementById('start-button').addEventListener('click', async () => {
+            await init();
+        });
+        
+        // ========================================
+        // ADD YOUR CUSTOM CODE BELOW
+        // ========================================
+        
+        // Example: Change synth type
+        // audioEngine.setSynthType('sawtooth');
+        
+        // Example: Add a button
+        // document.getElementById('myButton').addEventListener('click', () => {
+        //     audioEngine.playNote(60, 0.5, 0.7); // Play middle C
+        // });
+        
+    </script>
+</body>
+</html>
+

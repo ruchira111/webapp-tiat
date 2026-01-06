@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+========================================
+INSTRUMENT METADATA
+========================================
+Artist: Dan Gorelick
+Date: Nov 30, 2025
+Instrument: Game of Life Step Sequencer
+Description: 16-step sequencer with Conway's Game of Life evolution
+             2 octaves (16 rows) with major, minor, chromatic scales
+             Grid evolves when playhead reaches the end
+             
+Tags: #sequencer #generative #cellular-automata #game-of-life
+========================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Life Sequencer - Musical Instrument Sandbox</title>
+    
+    <link rel="stylesheet" href="../../css/visual-feedback.css">
+    
+    <style>
+        * { box-sizing: border-box; }
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #eee;
+            font-size: 16px;
+            overflow: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, p { padding: 0; margin: 0; }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Start screen */
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+        
+        #start-wrapper.hidden { display: none; }
+        
+        #start-button {
+            font-size: 1.3rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #start-button:hover { background-color: #45a049; }
+        
+        #start-text {
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem 0;
+            line-height: 1.6;
+        }
+        
+        /* Top bar */
+        .top-bar {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .back-button {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 15px;
+            height: 40px;
+            line-height: 40px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        
+        .back-button:hover { background-color: #555; }
+        
+        .title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            flex: 1;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+        
+        .label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        button, select {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 12px;
+            height: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        
+        button:hover, select:hover { background-color: #555; }
+        
+        button.active {
+            background-color: #4caf50;
+        }
+        
+        button.active:hover {
+            background-color: #45a049;
+        }
+        
+        button.reseed-button {
+            background-color: #ff9800;
+        }
+        
+        button.reseed-button:hover {
+            background-color: #f57c00;
+        }
+        
+        input[type="range"] {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4caf50;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        /* Grid container */
+        .grid-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        /* Sequencer grid */
+        #grid {
+            display: grid;
+            gap: 2px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .grid-cell {
+            width: 35px;
+            height: 35px;
+            background: #1a1a1a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.1s;
+            border-radius: 2px;
+        }
+        
+        .grid-cell:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .grid-cell.active {
+            background: var(--note-color);
+            border-color: var(--note-color);
+        }
+        
+        .grid-cell.playing {
+            box-shadow: 0 0 15px var(--note-color);
+            transform: scale(1.15);
+        }
+        
+        .grid-cell.current-step {
+            border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Bottom controls */
+        .bottom-bar {
+            padding: 15px 20px;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Generation counter */
+        .generation-display {
+            font-family: monospace;
+            font-size: 14px;
+            color: #ff9800;
+            padding: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="start-wrapper">
+            <button id="start-button">Start</button>
+            <div id="start-text">
+                <p><strong>Game of Life Step Sequencer</strong></p>
+                <p>Click grid cells to create patterns</p>
+                <p>Grid evolves using Conway's Game of Life rules when the playhead reaches the end</p>
+            </div>
+        </div>
+        
+        <div class="top-bar">
+            <a href="../../index.html" class="back-button">← Back</a>
+            <div class="title">Example 5: Game of Life Sequencer</div>
+        </div>
+        
+        <div class="grid-container">
+            <div id="grid"></div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="controls">
+                <button id="play-button">▶️ Play</button>
+                
+                <span class="label">BPM:</span>
+                <input type="range" id="bpm-slider" min="60" max="200" value="120">
+                <span id="bpm-display" style="min-width: 40px; font-family: monospace;">120</span>
+                
+                <span class="label">Scale:</span>
+                <select id="scale-select">
+                    <option value="major">Major</option>
+                    <option value="minor">Minor</option>
+                    <option value="chromatic">Chromatic</option>
+                </select>
+                
+                <span class="label">Output:</span>
+                <select id="output-select">
+                    <option value="tonejs">🔊 Tone.js</option>
+                    <optgroup label="🎹 WebAudioFont">
+                        <option value="webaudiofont:organ">  Organ</option>
+                        <option value="webaudiofont:choir">  Choir</option>
+                    </optgroup>
+                </select>
+                
+                <button id="reseed-button" class="reseed-button">🎲 Re-seed</button>
+                <button id="clear-button">Clear</button>
+                
+                <span class="generation-display">Gen: <span id="generation-count">0</span></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- External libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="../../audio/soundfonts/WebAudioFont.js"></script>
+    <script src="../../audio/soundfonts/0161_SoundBlasterOld_sf2.js"></script>
+    <script src="../../audio/soundfonts/0530_Aspirin_sf2_file.js"></script>
+    
+    <!-- Utilities -->
+    <script src="../../js/utils/math.js"></script>
+    
+    <script>
+        // ========================================
+        // CONFIGURATION
+        // ========================================
+        
+        const CONFIG = {
+            steps: 16,
+            bpm: 120,
+            rootNote: 48,  // C3 (start 2 octaves)
+            
+            scales: {
+                major: [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24],       // 2 octaves major
+                minor: [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22, 24],       // 2 octaves minor
+                chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]  // 2 octaves chromatic
+            },
+            
+            currentScale: 'major'
+        };
+        
+        // ========================================
+        // STATE
+        // ========================================
+        
+        let grid = [];  // 2D array: grid[step][noteIndex] = true/false
+        let currentStep = 0;
+        let isPlaying = false;
+        let initialized = false;
+        let generation = 0;
+        
+        // Audio
+        let synth;
+        let audioContext;
+        let wafPlayer;
+        let wafPreset;
+        let currentOutput = 'tonejs';
+        
+        // Timing
+        let sequenceInterval;
+        
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            document.getElementById('start-wrapper').classList.add('hidden');
+            
+            // Start Tone.js
+            await Tone.start();
+            Tone.Transport.bpm.value = CONFIG.bpm;
+            
+            // Create synth
+            synth = new Tone.PolySynth(Tone.Synth, {
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.1,
+                    sustain: 0.3,
+                    release: 0.2
+                },
+                volume: -6
+            }).toDestination();
+            
+            // Create audio context for WebAudioFont
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Initialize grid
+            initializeGrid();
+            renderGrid();
+            
+            // Setup controls
+            setupControls();
+            
+            console.log('✅ Game of Life sequencer ready!');
+        }
+        
+        function initializeGrid() {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            grid = [];
+            
+            for (let step = 0; step < CONFIG.steps; step++) {
+                grid[step] = [];
+                for (let note = 0; note < numNotes; note++) {
+                    grid[step][note] = false;
+                }
+            }
+        }
+        
+        // ========================================
+        // GRID RENDERING
+        // ========================================
+        
+        function renderGrid() {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            
+            // Set grid template (columns × rows)
+            gridEl.style.gridTemplateColumns = `repeat(${CONFIG.steps}, 35px)`;
+            gridEl.style.gridTemplateRows = `repeat(${numNotes}, 35px)`;
+            
+            // Create cells (top to bottom = high to low notes)
+            for (let noteIndex = numNotes - 1; noteIndex >= 0; noteIndex--) {
+                for (let step = 0; step < CONFIG.steps; step++) {
+                    const cell = createCell(step, noteIndex);
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+        
+        function createCell(step, noteIndex) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.step = step;
+            cell.dataset.note = noteIndex;
+            
+            // Set color based on note (2 octave range)
+            const noteValue = getNoteValue(noteIndex);
+            const hue = map(noteValue, CONFIG.rootNote, CONFIG.rootNote + 24, 180, 300);
+            cell.style.setProperty('--note-color', `hsl(${hue}, 70%, 50%)`);
+            
+            // Set active state
+            if (grid[step][noteIndex]) {
+                cell.classList.add('active');
+            }
+            
+            // Click to toggle
+            cell.addEventListener('click', () => {
+                toggleCell(step, noteIndex);
+            });
+            
+            return cell;
+        }
+        
+        function toggleCell(step, noteIndex) {
+            grid[step][noteIndex] = !grid[step][noteIndex];
+            updateCellDisplay(step, noteIndex);
+        }
+        
+        function updateCellDisplay(step, noteIndex) {
+            const cell = document.querySelector(`[data-step="${step}"][data-note="${noteIndex}"]`);
+            if (cell) {
+                if (grid[step][noteIndex]) {
+                    cell.classList.add('active');
+                } else {
+                    cell.classList.remove('active');
+                }
+            }
+        }
+        
+        // ========================================
+        // GAME OF LIFE LOGIC
+        // ========================================
+        
+        function evolveGameOfLife() {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            const newGrid = [];
+            
+            // Create new grid based on Game of Life rules
+            for (let step = 0; step < CONFIG.steps; step++) {
+                newGrid[step] = [];
+                for (let note = 0; note < numNotes; note++) {
+                    const neighbors = countNeighbors(step, note);
+                    const isAlive = grid[step][note];
+                    
+                    // Conway's Game of Life rules:
+                    // 1. Any live cell with 2-3 neighbors survives
+                    // 2. Any dead cell with exactly 3 neighbors becomes alive
+                    // 3. All other cells die or stay dead
+                    if (isAlive) {
+                        newGrid[step][note] = (neighbors === 2 || neighbors === 3);
+                    } else {
+                        newGrid[step][note] = (neighbors === 3);
+                    }
+                }
+            }
+            
+            grid = newGrid;
+            generation++;
+            document.getElementById('generation-count').textContent = generation;
+            
+            // Update all cell displays
+            for (let step = 0; step < CONFIG.steps; step++) {
+                for (let note = 0; note < numNotes; note++) {
+                    updateCellDisplay(step, note);
+                }
+            }
+            
+            console.log(`🧬 Generation ${generation}`);
+        }
+        
+        function countNeighbors(step, note) {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            let count = 0;
+            
+            // Check all 8 neighbors (with wrapping)
+            for (let ds = -1; ds <= 1; ds++) {
+                for (let dn = -1; dn <= 1; dn++) {
+                    // Skip the center cell
+                    if (ds === 0 && dn === 0) continue;
+                    
+                    // Wrap around edges
+                    const neighborStep = (step + ds + CONFIG.steps) % CONFIG.steps;
+                    const neighborNote = (note + dn + numNotes) % numNotes;
+                    
+                    if (grid[neighborStep][neighborNote]) {
+                        count++;
+                    }
+                }
+            }
+            
+            return count;
+        }
+        
+        function reseedGrid() {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            
+            // Fill with random cells (approximately 30% density)
+            for (let step = 0; step < CONFIG.steps; step++) {
+                for (let note = 0; note < numNotes; note++) {
+                    grid[step][note] = Math.random() < 0.3;
+                }
+            }
+            
+            generation = 0;
+            document.getElementById('generation-count').textContent = generation;
+            
+            // Update all cell displays
+            for (let step = 0; step < CONFIG.steps; step++) {
+                for (let note = 0; note < numNotes; note++) {
+                    updateCellDisplay(step, note);
+                }
+            }
+            
+            console.log('🎲 Grid re-seeded');
+        }
+        
+        // ========================================
+        // SEQUENCER PLAYBACK
+        // ========================================
+        
+        function startSequencer() {
+            if (isPlaying) return;
+            isPlaying = true;
+            currentStep = 0;
+            
+            document.getElementById('play-button').textContent = '⏸️ Pause';
+            document.getElementById('play-button').classList.add('active');
+            
+            // Calculate step duration in milliseconds
+            const stepDuration = (60 / CONFIG.bpm) * 1000 / 4; // 16th notes
+            
+            sequenceInterval = setInterval(() => {
+                playStep(currentStep);
+                currentStep++;
+                
+                // When reaching the end, evolve and wrap around
+                if (currentStep >= CONFIG.steps) {
+                    currentStep = 0;
+                    evolveGameOfLife();
+                }
+            }, stepDuration);
+            
+            console.log('▶️ Sequencer started');
+        }
+        
+        function stopSequencer() {
+            if (!isPlaying) return;
+            isPlaying = false;
+            
+            clearInterval(sequenceInterval);
+            clearPlayheadHighlight();
+            
+            document.getElementById('play-button').textContent = '▶️ Play';
+            document.getElementById('play-button').classList.remove('active');
+            
+            console.log('⏸️ Sequencer stopped');
+        }
+        
+        function togglePlayback() {
+            if (isPlaying) {
+                stopSequencer();
+            } else {
+                startSequencer();
+            }
+        }
+        
+        function playStep(step) {
+            const numNotes = CONFIG.scales[CONFIG.currentScale].length;
+            
+            // Clear previous playhead
+            clearPlayheadHighlight();
+            
+            // Highlight current step
+            for (let noteIndex = 0; noteIndex < numNotes; noteIndex++) {
+                const cell = document.querySelector(`[data-step="${step}"][data-note="${noteIndex}"]`);
+                if (cell) {
+                    cell.classList.add('current-step');
+                    
+                    // If note is active, play it
+                    if (grid[step][noteIndex]) {
+                        cell.classList.add('playing');
+                        playNote(noteIndex);
+                        
+                        // Remove playing class after brief moment
+                        setTimeout(() => {
+                            cell.classList.remove('playing');
+                        }, 100);
+                    }
+                }
+            }
+        }
+        
+        function clearPlayheadHighlight() {
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.classList.remove('current-step', 'playing');
+            });
+        }
+        
+        // ========================================
+        // AUDIO PLAYBACK
+        // ========================================
+        
+        function playNote(noteIndex) {
+            const midiNote = getNoteValue(noteIndex);
+            
+            if (currentOutput === 'tonejs') {
+                const noteName = Tone.Frequency(midiNote, 'midi').toNote();
+                synth.triggerAttackRelease(noteName, '16n');
+            } else if (currentOutput === 'webaudiofont') {
+                wafPlayer.queueWaveTable(
+                    audioContext,
+                    audioContext.destination,
+                    wafPreset,
+                    audioContext.currentTime,
+                    midiNote,
+                    0.15,  // Short note (16th note)
+                    0.7
+                );
+            } else if (currentOutput === 'midiout') {
+                // Send MIDI note
+                if (midiOutput) {
+                    midiOutput.send([0x90, midiNote, 100]); // Note on
+                    setTimeout(() => {
+                        midiOutput.send([0x80, midiNote, 0]); // Note off
+                    }, 100);
+                }
+            }
+        }
+        
+        function getNoteValue(noteIndex) {
+            const scaleIntervals = CONFIG.scales[CONFIG.currentScale];
+            const interval = scaleIntervals[noteIndex];
+            return CONFIG.rootNote + interval;
+        }
+        
+        // ========================================
+        // SCALE SWITCHING
+        // ========================================
+        
+        function changeScale(newScale) {
+            const oldScale = CONFIG.currentScale;
+            const oldNumNotes = CONFIG.scales[oldScale].length;
+            const newNumNotes = CONFIG.scales[newScale].length;
+            
+            const wasPlaying = isPlaying;
+            if (wasPlaying) stopSequencer();
+            
+            // Save current grid
+            const oldGrid = grid.map(step => [...step]);
+            
+            CONFIG.currentScale = newScale;
+            
+            // Create new grid with proper size
+            const newGrid = [];
+            for (let step = 0; step < CONFIG.steps; step++) {
+                newGrid[step] = [];
+                for (let note = 0; note < newNumNotes; note++) {
+                    newGrid[step][note] = false;
+                }
+            }
+            
+            // Map notes from old scale to new scale based on intervals
+            for (let step = 0; step < CONFIG.steps; step++) {
+                for (let oldNoteIdx = 0; oldNoteIdx < oldNumNotes; oldNoteIdx++) {
+                    if (oldGrid[step][oldNoteIdx]) {
+                        // Get the interval in the old scale
+                        const interval = CONFIG.scales[oldScale][oldNoteIdx];
+                        
+                        // Find if this interval exists in new scale
+                        const newNoteIdx = CONFIG.scales[newScale].indexOf(interval);
+                        
+                        if (newNoteIdx !== -1) {
+                            newGrid[step][newNoteIdx] = true;
+                        }
+                    }
+                }
+            }
+            
+            grid = newGrid;
+            renderGrid();
+            
+            if (wasPlaying) startSequencer();
+            
+            console.log(`Scale changed: ${oldScale} → ${newScale}`);
+        }
+        
+        // ========================================
+        // OUTPUT SWITCHING
+        // ========================================
+        
+        let midiOutput = null;
+        
+        async function setupOutput(type, config) {
+            currentOutput = type;
+            
+            if (type === 'tonejs') {
+                console.log('🔊 Using Tone.js');
+            } else if (type === 'webaudiofont') {
+                await setupWebAudioFont(config.instrument);
+            } else if (type === 'midiout') {
+                await setupMidiOutput(config.deviceId);
+            }
+        }
+        
+        async function setupWebAudioFont(instrument) {
+            if (!wafPlayer) {
+                wafPlayer = new WebAudioFontPlayer();
+            }
+            
+            const presetMap = {
+                organ: '_tone_0161_SoundBlasterOld_sf2',
+                choir: '_tone_0530_Aspirin_sf2_file'
+            };
+            
+            const presetVar = presetMap[instrument];
+            if (!window[presetVar]) {
+                throw new Error(`Soundfont ${instrument} not loaded`);
+            }
+            
+            wafPreset = window[presetVar];
+            wafPlayer.adjustPreset(audioContext, wafPreset);
+            
+            console.log(`🎹 Using WebAudioFont: ${instrument}`);
+        }
+        
+        async function setupMidiOutput(deviceId) {
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                const outputs = Array.from(midiAccess.outputs.values());
+                
+                if (outputs.length === 0) {
+                    throw new Error('No MIDI output devices found');
+                }
+                
+                midiOutput = deviceId ? 
+                    midiAccess.outputs.get(deviceId) : 
+                    outputs[0];
+                
+                console.log(`📡 MIDI Output: ${midiOutput.name}`);
+            } catch (error) {
+                alert(`MIDI Output error: ${error.message}\nFalling back to Tone.js.`);
+                document.getElementById('output-select').value = 'tonejs';
+                await setupOutput('tonejs', {});
+            }
+        }
+        
+        async function populateMidiOutputs() {
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                const outputs = Array.from(midiAccess.outputs.values());
+                
+                if (outputs.length > 0) {
+                    const select = document.getElementById('output-select');
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = '📡 MIDI Output';
+                    
+                    outputs.forEach(output => {
+                        const option = document.createElement('option');
+                        option.value = `midiout:${output.id}`;
+                        option.textContent = `  ${output.name}`;
+                        optgroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(optgroup);
+                }
+            } catch (e) {
+                console.log('No MIDI outputs available');
+            }
+        }
+        
+        // ========================================
+        // CONTROLS
+        // ========================================
+        
+        function setupControls() {
+            // Play/pause
+            document.getElementById('play-button').addEventListener('click', togglePlayback);
+            
+            // BPM slider
+            document.getElementById('bpm-slider').addEventListener('input', (e) => {
+                CONFIG.bpm = parseInt(e.target.value);
+                document.getElementById('bpm-display').textContent = CONFIG.bpm;
+                Tone.Transport.bpm.value = CONFIG.bpm;
+                
+                // Restart sequencer if playing
+                if (isPlaying) {
+                    stopSequencer();
+                    startSequencer();
+                }
+            });
+            
+            // Scale selector
+            document.getElementById('scale-select').addEventListener('change', (e) => {
+                changeScale(e.target.value);
+            });
+            
+            // Output selector
+            document.getElementById('output-select').addEventListener('change', async (e) => {
+                const val = e.target.value;
+                if (val.includes(':')) {
+                    const [type, cfg] = val.split(':');
+                    await setupOutput(type, type === 'webaudiofont' ? 
+                        { instrument: cfg } : { deviceId: cfg });
+                } else {
+                    await setupOutput(val, {});
+                }
+            });
+            
+            // Re-seed button
+            document.getElementById('reseed-button').addEventListener('click', reseedGrid);
+            
+            // Clear button
+            document.getElementById('clear-button').addEventListener('click', clearGrid);
+            
+            // Populate MIDI outputs
+            populateMidiOutputs();
+        }
+        
+        function clearGrid() {
+            grid.forEach(step => {
+                step.fill(false);
+            });
+            
+            generation = 0;
+            document.getElementById('generation-count').textContent = generation;
+            
+            // Update all cell displays
+            for (let step = 0; step < CONFIG.steps; step++) {
+                for (let note = 0; note < CONFIG.scales[CONFIG.currentScale].length; note++) {
+                    updateCellDisplay(step, note);
+                }
+            }
+            
+            console.log('🧹 Grid cleared');
+        }
+        
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+        
+        document.getElementById('start-button').addEventListener('click', init);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                togglePlayback();
+            } else if (e.key === 'c') {
+                clearGrid();
+            } else if (e.key === 'r') {
+                reseedGrid();
+            } else if (e.key === 'e') {
+                evolveGameOfLife();
+            }
+        });
+        
+        // ========================================
+        // CUSTOMIZATION TIPS
+        // ========================================
+        
+        // Want different evolution speed?
+        // Change the evolveGameOfLife() call in startSequencer to happen every N steps
+        
+        // Want different Game of Life rules?
+        // Modify the neighbor count conditions in evolveGameOfLife()
+        
+        // Want more variety in re-seeding?
+        // Change the Math.random() < 0.3 threshold in reseedGrid()
+        
+        // Want to try other cellular automata?
+        // Try Brian's Brain, Seeds, or other rulesets!
+        
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+========================================
+INSTRUMENT METADATA
+========================================
+Artist: Dan Gorelick
+Date: Nov 30, 2025
+Instrument: Polyphonic Synth
+Description: Multiple simultaneous notes with ADSR envelopes
+             Hold notes with keyboard or mouse
+             Adjust attack, decay, sustain, release
+
+Tags: #polyphony #envelopes #adsr #synth
+========================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyphonic Synth - Musical Instrument Sandbox</title>
+    
+    <link rel="stylesheet" href="../../css/visual-feedback.css">
+    
+    <style>
+        * { box-sizing: border-box; }
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #eee;
+            font-size: 16px;
+            overflow: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, p { padding: 0; margin: 0; }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Start screen */
+        #start-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        #start-wrapper.hidden { display: none; }
+        
+        #start-button {
+            font-size: 1.3rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #start-button:hover { background-color: #45a049; }
+        
+        #start-text {
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem 0;
+            line-height: 1.6;
+        }
+        
+        /* Top bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+        
+        .back-button {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 15px;
+            height: 40px;
+            line-height: 40px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        
+        .back-button:hover { background-color: #555; }
+        
+        .title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        select {
+            background-color: #454545;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0 12px;
+            height: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 140px;
+        }
+        
+        select:hover { background-color: #555; }
+        
+        /* Envelope controls (right side) */
+        #envelope-panel {
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 5px;
+            min-width: 200px;
+            z-index: 998;
+        }
+        
+        .envelope-control {
+            margin-bottom: 15px;
+        }
+        
+        .envelope-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 5px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4caf50;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #4caf50;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        
+        .value-display {
+            font-size: 12px;
+            color: #4caf50;
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        /* Active notes display (bottom left) */
+        #active-notes {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 1.5rem;
+            z-index: 999;
+        }
+        
+        .active-note {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 2px;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            border-radius: 3px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        /* Instructions (bottom center) */
+        #instructions {
+            position: absolute;
+            bottom: 1.8rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        /* Keyboard helper */
+        #keyboard-helper {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 998;
+            display: none;
+        }
+        
+        #keyboard-helper.show { display: block; }
+        
+        .key-row {
+            display: flex;
+            gap: 3px;
+            margin: 3px 0;
+        }
+        
+        .key {
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            min-width: 30px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="start-wrapper">
+            <button id="start-button">Start</button>
+            <div id="start-text">
+                <p><strong>Polyphonic Synthesizer</strong></p>
+                <p>Play multiple notes at once with adjustable envelopes</p>
+            </div>
+        </div>
+        
+        <div class="top-bar">
+            <a href="../../index.html" class="back-button">← Back</a>
+            <div class="title">Example 3: Polyphonic Synth</div>
+            <div class="controls">
+                <span class="label">Input:</span>
+                <select id="input-select">
+                    <option value="keyboard">⌨️ Keyboard</option>
+                    <option value="midi">🎹 MIDI</option>
+                </select>
+                
+                <span class="label">Output:</span>
+                <select id="output-select">
+                    <option value="tonejs">🔊 Tone.js</option>
+                    <optgroup label="🎹 WebAudioFont">
+                        <option value="webaudiofont:organ">  Organ</option>
+                        <option value="webaudiofont:choir">  Choir</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Envelope controls (right side) -->
+        <div id="envelope-panel">
+            <h3 style="margin-bottom: 15px; font-size: 14px;">ENVELOPE (ADSR)</h3>
+            
+            <div class="envelope-control">
+                <div class="envelope-label">Attack</div>
+                <input type="range" id="attack" min="0.001" max="2" step="0.001" value="0.01">
+                <div class="value-display"><span id="attack-val">0.01</span>s</div>
+            </div>
+            
+            <div class="envelope-control">
+                <div class="envelope-label">Decay</div>
+                <input type="range" id="decay" min="0.001" max="2" step="0.001" value="0.1">
+                <div class="value-display"><span id="decay-val">0.1</span>s</div>
+            </div>
+            
+            <div class="envelope-control">
+                <div class="envelope-label">Sustain</div>
+                <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.3">
+                <div class="value-display"><span id="sustain-val">0.3</span></div>
+            </div>
+            
+            <div class="envelope-control">
+                <div class="envelope-label">Release</div>
+                <input type="range" id="release" min="0.001" max="5" step="0.001" value="1">
+                <div class="value-display"><span id="release-val">1.0</span>s</div>
+            </div>
+        </div>
+        
+        <!-- Active notes display -->
+        <div id="active-notes"></div>
+        
+        <div id="instructions">
+            <span id="instructionText">Select input method</span>
+        </div>
+        
+        <div id="keyboard-helper">
+            <p>Keyboard:</p>
+            <div class="key-row">
+                <div class="key">2</div><div class="key">3</div><div class="key" style="opacity:0.3">-</div>
+                <div class="key">5</div><div class="key">6</div><div class="key">7</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div>
+                <div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div>
+            </div>
+            <div style="height:5px"></div>
+            <div class="key-row">
+                <div class="key">S</div><div class="key">D</div><div class="key" style="opacity:0.3">-</div>
+                <div class="key">G</div><div class="key">H</div><div class="key">J</div>
+            </div>
+            <div class="key-row">
+                <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div>
+                <div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key">,</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- External libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="../../audio/soundfonts/WebAudioFont.js"></script>
+    <script src="../../audio/soundfonts/0161_SoundBlasterOld_sf2.js"></script>
+    <script src="../../audio/soundfonts/0530_Aspirin_sf2_file.js"></script>
+    
+    <!-- Utilities -->
+    <script src="../../js/utils/math.js"></script>
+    
+    <script>
+        // ========================================
+        // CONFIGURATION
+        // Modify these to customize the synth!
+        // ========================================
+        
+        const CONFIG = {
+            // Envelope settings (ADSR)
+            envelope: {
+                attack: 0.01,    // Time to reach full volume
+                decay: 0.1,      // Time to decay to sustain level
+                sustain: 0.3,    // Sustain level (0-1)
+                release: 1.0     // Time to fade out after release
+            },
+            
+            // Synth type
+            synthType: 'sine',   // 'sine', 'square', 'sawtooth', 'triangle'
+            
+            // Note range
+            minNote: 48,         // C3
+            maxNote: 84          // C6
+        };
+        
+        // ========================================
+        // STATE
+        // ========================================
+        
+        let audioContext;
+        let polySynth;
+        let currentOutput = 'tonejs';
+        let initialized = false;
+        
+        // Track active notes
+        let activeNotes = new Map(); // note -> { element, synth }
+        
+        // WebAudioFont
+        let wafPlayer;
+        let wafPreset;
+        let wafEnvelopes = new Map(); // Track individual note envelopes
+        
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            document.getElementById('start-wrapper').classList.add('hidden');
+            
+            // Start Tone.js
+            await Tone.start();
+            
+            // Create polyphonic synth
+            createSynth();
+            
+            // Setup controls
+            setupEnvelopeControls();
+            setupInputSelector();
+            setupOutputSelector();
+            
+            // Setup initial input
+            await setupInput('keyboard');
+            
+            console.log('✅ Polyphonic synth ready!');
+        }
+        
+        function createSynth() {
+            // Create volume control to prevent clipping
+            const volume = new Tone.Volume(-12).toDestination(); // Reduce by 12dB
+            
+            polySynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: CONFIG.synthType
+                },
+                envelope: {
+                    attack: CONFIG.envelope.attack,
+                    decay: CONFIG.envelope.decay,
+                    sustain: CONFIG.envelope.sustain,
+                    release: CONFIG.envelope.release
+                },
+                volume: -6  // Also reduce synth volume
+            }).connect(volume);
+        }
+        
+        // ========================================
+        // INPUT HANDLING
+        // ========================================
+        
+        let currentInput = 'keyboard';
+        let inputListeners = [];
+        let keysPressed = new Set();
+        
+        // Keyboard layout (piano style)
+        const keyboardLayout = {
+            // Lower octave
+            'z': 48, 'x': 50, 'c': 52, 'v': 53, 'b': 55, 'n': 57, 'm': 59, ',': 60,
+            's': 49, 'd': 51, 'g': 54, 'h': 56, 'j': 58,
+            // Upper octave
+            'q': 60, 'w': 62, 'e': 64, 'r': 65, 't': 67, 'y': 69, 'u': 71, 'i': 72,
+            '2': 61, '3': 63, '5': 66, '6': 68, '7': 70
+        };
+        
+        async function setupInput(type) {
+            currentInput = type;
+            cleanupInput();
+            
+            if (type === 'keyboard') {
+                setupKeyboardInput();
+            } else if (type === 'midi') {
+                await setupMidiInput();
+            }
+        }
+        
+        function setupKeyboardInput() {
+            document.getElementById('instructionText').textContent = 
+                'Hold keys to sustain notes • Release to stop';
+            document.getElementById('keyboard-helper').classList.add('show');
+            
+            const handleKeyDown = (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                
+                const key = e.key.toLowerCase();
+                if (keysPressed.has(key)) return;
+                
+                const note = keyboardLayout[key];
+                if (note !== undefined) {
+                    e.preventDefault();
+                    keysPressed.add(key);
+                    triggerNote(note);
+                }
+            };
+            
+            const handleKeyUp = (e) => {
+                const key = e.key.toLowerCase();
+                keysPressed.delete(key);
+                
+                const note = keyboardLayout[key];
+                if (note !== undefined) {
+                    releaseNote(note);
+                }
+            };
+            
+            const handleBlur = () => {
+                keysPressed.forEach(key => {
+                    const note = keyboardLayout[key];
+                    if (note) releaseNote(note);
+                });
+                keysPressed.clear();
+            };
+            
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            window.addEventListener('blur', handleBlur);
+            
+            inputListeners = [
+                { el: document, event: 'keydown', fn: handleKeyDown },
+                { el: document, event: 'keyup', fn: handleKeyUp },
+                { el: window, event: 'blur', fn: handleBlur }
+            ];
+        }
+        
+        let midiInputs = [];
+        
+        async function setupMidiInput() {
+            document.getElementById('instructionText').textContent = 
+                'MIDI controller connected • Notes sustain until release';
+            document.getElementById('keyboard-helper').classList.remove('show');
+            
+            try {
+                const midiAccess = await navigator.requestMIDIAccess();
+                
+                if (midiAccess.inputs.size === 0) {
+                    throw new Error('No MIDI devices found');
+                }
+                
+                for (const input of midiAccess.inputs.values()) {
+                    input.onmidimessage = handleMidiMessage;
+                    midiInputs.push(input);
+                }
+                
+                console.log('✅ MIDI input connected');
+            } catch (error) {
+                alert(`MIDI error: ${error.message}\nFalling back to keyboard.`);
+                document.getElementById('input-select').value = 'keyboard';
+                await setupInput('keyboard');
+            }
+        }
+        
+        function handleMidiMessage(message) {
+            const [status, note, velocity] = message.data;
+            const command = status & 0xf0;
+            
+            if (command === 0x90 && velocity > 0) {
+                // Note on
+                triggerNote(note);
+            } else if (command === 0x80 || (command === 0x90 && velocity === 0)) {
+                // Note off
+                releaseNote(note);
+            }
+        }
+        
+        function cleanupInput() {
+            // Stop all currently playing notes first
+            stopAllNotes();
+            
+            // Clean up keyboard/mouse listeners
+            inputListeners.forEach(({ el, event, fn }) => {
+                el.removeEventListener(event, fn);
+            });
+            inputListeners = [];
+            keysPressed.clear();
+            
+            // Clean up MIDI listeners
+            midiInputs.forEach(input => {
+                input.onmidimessage = null;
+            });
+            midiInputs = [];
+            
+            console.log(`🔇 Input cleaned up`);
+        }
+        
+        // ========================================
+        // NOTE TRIGGERING (with polyphony!)
+        // ========================================
+        
+        function triggerNote(note) {
+            // Don't retrigger if already playing
+            if (activeNotes.has(note)) return;
+            
+            // Trigger based on output type
+            if (currentOutput === 'tonejs') {
+                const noteName = Tone.Frequency(note, 'midi').toNote();
+                polySynth.triggerAttack(noteName);
+                activeNotes.set(note, { element: createNoteElement(note) });
+            } else if (currentOutput === 'webaudiofont') {
+                // WebAudioFont with manual envelope control
+                // We need to create a gain node to control each note independently
+                const gainNode = audioContext.createGain();
+                gainNode.connect(audioContext.destination);
+                
+                // Start with attack
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + CONFIG.envelope.attack);
+                
+                const envelope = wafPlayer.queueWaveTable(
+                    audioContext,
+                    gainNode,  // Connect to our gain node instead of destination
+                    wafPreset,
+                    audioContext.currentTime,
+                    note,
+                    999, // Long duration
+                    1.0  // Full velocity, we control volume with gain
+                );
+                
+                // Store both envelope and gain node
+                wafEnvelopes.set(note, { envelope, gainNode });
+                activeNotes.set(note, { element: createNoteElement(note) });
+            }
+            
+            // Visual feedback
+            const x = map(note, CONFIG.minNote, CONFIG.maxNote, 100, window.innerWidth - 100);
+            createRipple(x, window.innerHeight / 2);
+            
+            console.log(`🎵 Note on: ${note}`);
+        }
+        
+        function releaseNote(note) {
+            if (!activeNotes.has(note)) return;
+            
+            const noteData = activeNotes.get(note);
+            
+            // Release based on output type
+            if (currentOutput === 'tonejs') {
+                const noteName = Tone.Frequency(note, 'midi').toNote();
+                polySynth.triggerRelease(noteName);
+            } else if (currentOutput === 'webaudiofont') {
+                // For WebAudioFont, fade out using the gain node
+                const envData = wafEnvelopes.get(note);
+                if (envData) {
+                    const { envelope, gainNode } = envData;
+                    
+                    // Trigger release envelope
+                    const now = audioContext.currentTime;
+                    gainNode.gain.cancelScheduledValues(now);
+                    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                    gainNode.gain.linearRampToValueAtTime(0, now + CONFIG.envelope.release);
+                    
+                    // Cancel the actual sound after release time
+                    setTimeout(() => {
+                        if (envelope) envelope.cancel();
+                        gainNode.disconnect();
+                    }, CONFIG.envelope.release * 1000 + 100);
+                    
+                    wafEnvelopes.delete(note);
+                }
+            }
+            
+            // Remove from display
+            if (noteData.element) {
+                noteData.element.style.opacity = '0';
+                setTimeout(() => {
+                    if (noteData.element.parentNode) {
+                        noteData.element.remove();
+                    }
+                }, 300);
+            }
+            
+            activeNotes.delete(note);
+            
+            console.log(`🎵 Note off: ${note}`);
+        }
+        
+        function createNoteElement(note) {
+            const noteName = Tone.Frequency(note, 'midi').toNote();
+            const el = document.createElement('div');
+            el.className = 'active-note';
+            el.textContent = noteName;
+            
+            // Color by note
+            const hue = map(note, CONFIG.minNote, CONFIG.maxNote, 0, 300);
+            el.style.background = `hsla(${hue}, 70%, 40%, 0.5)`;
+            el.style.borderColor = `hsla(${hue}, 70%, 50%, 0.8)`;
+            
+            document.getElementById('active-notes').appendChild(el);
+            return el;
+        }
+        
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.left = (x - 25) + 'px';
+            ripple.style.top = (y - 25) + 'px';
+            document.getElementById('wrapper').appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        }
+        
+        // ========================================
+        // OUTPUT HANDLING
+        // ========================================
+        
+        async function setupOutput(type, config) {
+            currentOutput = type;
+            
+            // Stop all active notes when switching
+            stopAllNotes();
+            
+            if (type === 'tonejs') {
+                // Already initialized
+                console.log('🔊 Using Tone.js synth');
+            } else if (type === 'webaudiofont') {
+                await setupWebAudioFont(config.instrument);
+            }
+        }
+        
+        async function setupWebAudioFont(instrument) {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            if (!wafPlayer) {
+                wafPlayer = new WebAudioFontPlayer();
+            }
+            
+            const presetMap = {
+                organ: '_tone_0161_SoundBlasterOld_sf2',
+                choir: '_tone_0530_Aspirin_sf2_file'
+            };
+            
+            const presetVar = presetMap[instrument];
+            if (!window[presetVar]) {
+                throw new Error(`Soundfont ${instrument} not loaded`);
+            }
+            
+            wafPreset = window[presetVar];
+            wafPlayer.adjustPreset(audioContext, wafPreset);
+            
+            // DON'T set custom AHDSR - use the soundfont's natural envelope
+            // WebAudioFont handles sustain internally
+            
+            console.log(`🎹 Using WebAudioFont: ${instrument}`);
+        }
+        
+        function stopAllNotes() {
+            // Copy notes to array first (to avoid concurrent modification)
+            const notesToStop = Array.from(activeNotes.keys());
+            notesToStop.forEach(note => {
+                releaseNote(note);
+            });
+            
+            // Clean up any orphaned envelopes
+            wafEnvelopes.clear();
+        }
+        
+        // ========================================
+        // ENVELOPE CONTROLS
+        // ========================================
+        
+        function setupEnvelopeControls() {
+            const controls = ['attack', 'decay', 'sustain', 'release'];
+            
+            controls.forEach(param => {
+                const slider = document.getElementById(param);
+                const display = document.getElementById(`${param}-val`);
+                
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    CONFIG.envelope[param] = value;
+                    display.textContent = value.toFixed(3);
+                    
+                    // Update Tone.js synth
+                    if (polySynth) {
+                        polySynth.set({
+                            envelope: CONFIG.envelope
+                        });
+                    }
+                    
+                    console.log(`Envelope ${param}: ${value}`);
+                });
+            });
+        }
+        
+        function setupInputSelector() {
+            document.getElementById('input-select').addEventListener('change', async (e) => {
+                if (!initialized) await init();
+                await setupInput(e.target.value);
+            });
+        }
+        
+        function setupOutputSelector() {
+            document.getElementById('output-select').addEventListener('change', async (e) => {
+                if (!initialized) await init();
+                const val = e.target.value;
+                
+                if (val.includes(':')) {
+                    const [type, instrument] = val.split(':');
+                    await setupOutput('webaudiofont', { instrument });
+                } else {
+                    await setupOutput(val, {});
+                }
+            });
+        }
+        
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+        
+        document.getElementById('start-button').addEventListener('click', init);
+        
+        // ========================================
+        // CUSTOMIZATION TIPS
+        // ========================================
+        
+        // Want longer attack (slower fade in)?
+        // Change CONFIG.envelope.attack to 0.5 or 1.0
+        
+        // Want shorter release (quick fade out)?
+        // Change CONFIG.envelope.release to 0.1
+        
+        // Want different synth sound?
+        // Change CONFIG.synthType to 'square' or 'sawtooth'
+        
+        // Want to see all active notes as colored boxes?
+        // Modify createNoteElement() to add more styling
+        
+        // Want chords?
+        // Modify triggerNote() to play multiple notes:
+        //   triggerNote(note);
+        //   triggerNote(note + 4);  // Major third
+        //   triggerNote(note + 7);  // Perfect fifth
+        
+    </script>
+</body>
+</html>
+

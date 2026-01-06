@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Growing Keyboard</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 30%, #ADD8E6 60%, #E0F6FF 100%);
+            color: #1a1a2e;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+        
+        .text-editor {
+            position: absolute;
+            right: 0;
+            top: 60px;
+            width: 350px;
+            height: calc(100vh - 60px);
+            background: rgba(255, 255, 255, 0.95);
+            border-left: 2px solid rgba(45, 80, 22, 0.4);
+            padding: 20px;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .text-editor-header {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2d5016;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(45, 80, 22, 0.3);
+        }
+        
+        .text-editor-content {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(45, 80, 22, 0.2);
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #1a1a2e;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+            min-height: 200px;
+        }
+        
+        .text-editor-content:focus {
+            outline: 2px solid rgba(45, 80, 22, 0.5);
+            outline-offset: -2px;
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        .text-editor-info {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #2d5016;
+            opacity: 0.8;
+        }
+        
+        .toggle-editor {
+            position: absolute;
+            right: 10px;
+            top: 70px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(45, 80, 22, 0.4);
+            color: #2d5016;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-editor:hover {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .text-editor.hidden {
+            display: none;
+        }
+        
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d5016;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 30px;
+            border-radius: 10px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(45, 80, 22, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+        }
+        
+        .instructions p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #1a1a2e;
+            line-height: 1.6;
+        }
+        
+        .instructions strong {
+            color: #2d5016;
+            font-weight: 600;
+        }
+        
+        .dismiss-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(45, 80, 22, 0.1);
+            border: 1px solid rgba(45, 80, 22, 0.3);
+            color: #2d5016;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .dismiss-btn:hover {
+            background: rgba(45, 80, 22, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .instructions.hidden {
+            display: none;
+        }
+        
+        .flower {
+            position: absolute;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        .flower-petal {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50% 0 50% 0;
+            transform-origin: center;
+        }
+        
+        @keyframes bloom {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 0.9;
+            }
+        }
+        
+        .flower-blooming {
+            animation: bloom 1.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <div class="top-bar">
+            <div class="title">🌱 Plant Growing Keyboard</div>
+            <div style="font-size: 0.9em; color: #1a1a2e; opacity: 0.9;">
+                Plants: <span id="plant-count">0</span> | 
+                Wind: <span id="wind-speed">0</span>
+            </div>
+        </div>
+        
+        <canvas id="canvas"></canvas>
+        
+        <button class="toggle-editor" id="toggleEditor">📝 Show Editor</button>
+        
+        <div class="text-editor hidden" id="textEditor">
+            <div class="text-editor-header">Text Editor</div>
+            <div class="text-editor-content" id="editorContent" contenteditable="true" spellcheck="false"></div>
+            <div class="text-editor-info">
+                Characters: <span id="char-count">0</span> | 
+                Lines: <span id="line-count">0</span>
+            </div>
+        </div>
+        
+        <div class="instructions" id="instructions">
+            <button class="dismiss-btn" id="dismissBtn" title="Dismiss">×</button>
+            <p><strong>Press keyboard keys</strong> to grow plants</p>
+            <p>All letter keys (A-Z), numbers (0-9), and symbols produce tones</p>
+            <p><strong>SPACEBAR</strong> = flower 🌸 • <strong>\</strong> = wind 💨 • <strong>CAPS LOCK</strong> = sunny glow ☀️</p>
+            <p>Click <strong>📝 Show Editor</strong> to see what you're typing</p>
+        </div>
+    </div>
+    
+    <!-- External libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Sandbox modules -->
+    <script src="js/utils/math.js"></script>
+    <script src="js/audio/tone-engine.js"></script>
+    <script src="js/audio/audio-output-manager.js"></script>
+    <script src="js/input/keyboard.js"></script>
+    <script src="js/input/input-manager.js"></script>
+    
+    <script>
+        // ========================================
+        // PLANT GROWING KEYBOARD
+        // ========================================
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let outputManager, inputManager;
+        let initialized = false;
+        
+        // Plant data structure: key -> { x, height, color, note }
+        const plants = new Map();
+        const plantPositions = []; // Track x positions to avoid overlap
+        const maxPlants = 20; // Maximum number of plants
+        const plantSpacing = 60; // Minimum spacing between plants
+        
+        // Flower data
+        let flowers = [];
+        
+        // Wind system
+        let windSpeed = 0;
+        let windParticles = [];
+        const maxWindSpeed = 15;
+        
+        // Sunny glow system
+        let sunnyGlowActive = false;
+        let sunnyGlowOpacity = 0;
+        let sunnyGlowTargetOpacity = 0;
+        
+        // Text editor state
+        let editorVisible = false;
+        let isTypingInEditor = false;
+        
+        // Extended keyboard mapping - map all keys to notes
+        const extendedKeyMap = {
+            // Letters (A-Z mapped to notes 48-73)
+            'a': 48, 'b': 50, 'c': 52, 'd': 53, 'e': 55, 'f': 57, 'g': 59, 'h': 60,
+            'i': 62, 'j': 64, 'k': 65, 'l': 67, 'm': 69, 'n': 71, 'o': 72, 'p': 74,
+            'q': 76, 'r': 77, 's': 79, 't': 81, 'u': 83, 'v': 84, 'w': 86, 'x': 88,
+            'y': 89, 'z': 91,
+            // Numbers (1-9, 0 mapped to notes 60-69)
+            '1': 60, '2': 61, '3': 62, '4': 63, '5': 64, '6': 65, '7': 66, '8': 67, '9': 68, '0': 69,
+            // Additional keys
+            ',': 70, '.': 71, '/': 72, ';': 73, "'": 74, '[': 75, ']': 76, '=': 77, '-': 78
+        };
+        
+        // Initialize canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Wind Particle class
+        class WindParticle {
+            constructor(x, y, speed) {
+                this.x = x;
+                this.y = y;
+                this.baseSpeed = speed || 1;
+                this.vx = -(2 + this.baseSpeed * 2 + Math.random() * 3);
+                this.vy = (Math.random() - 0.5) * 2;
+                this.life = 1.0;
+                this.decay = 0.01 + Math.random() * 0.02;
+                this.length = 20 + Math.random() * 30;
+                this.opacity = 0.3 + Math.random() * 0.4;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            
+            draw() {
+                if (this.life <= 0) return;
+                
+                ctx.save();
+                // Darker blue for visibility against light sky background
+                ctx.strokeStyle = `rgba(70, 130, 180, ${this.opacity * this.life})`;
+                ctx.lineWidth = 1.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - this.length, this.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+            
+            isDead() {
+                return this.life <= 0 || this.x < -50;
+            }
+        }
+        
+        // Wind system
+        class WindSystem {
+            constructor() {
+                this.particles = [];
+            }
+            
+            update(speed) {
+                // Add new particles based on wind speed
+                if (speed > 0) {
+                    const particleCount = Math.floor(speed * 2);
+                    for (let i = 0; i < particleCount; i++) {
+                        if (Math.random() < 0.3) {
+                            this.particles.push(new WindParticle(
+                                canvas.width + Math.random() * 100,
+                                Math.random() * canvas.height,
+                                speed
+                            ));
+                        }
+                    }
+                }
+                
+                // Update and remove dead particles
+                this.particles = this.particles.filter(particle => {
+                    particle.update();
+                    return !particle.isDead();
+                });
+            }
+            
+            draw() {
+                this.particles.forEach(particle => particle.draw());
+            }
+        }
+        
+        const windSystem = new WindSystem();
+        
+        // Play sunny harmony (4 notes)
+        function playSunnyHarmony(reverse = false) {
+            // Play a soft major chord harmony: C, E, G, C (octave higher)
+            // C4=60, E4=64, G4=67, C5=72
+            let harmonyNotes = [60, 64, 67, 72];
+            
+            // Reverse the order if requested
+            if (reverse) {
+                harmonyNotes = harmonyNotes.reverse(); // [72, 67, 64, 60] - C5, G4, E4, C4
+            }
+            
+            harmonyNotes.forEach((note, index) => {
+                setTimeout(() => {
+                    outputManager.playNote(note, 2.0, 0.4); // Soft, sustained notes
+                }, index * 100); // Stagger the notes slightly for a gentle arpeggio effect
+            });
+        }
+        
+        // Draw sunny glow from top
+        function drawSunnyGlow() {
+            if (sunnyGlowOpacity <= 0) return;
+            
+            ctx.save();
+            
+            // Create radial gradient from top center
+            const centerX = canvas.width / 2;
+            const centerY = 0;
+            const radius = Math.max(canvas.width, canvas.height) * 1.5;
+            
+            const gradient = ctx.createRadialGradient(
+                centerX, centerY, 0,
+                centerX, centerY, radius
+            );
+            
+            gradient.addColorStop(0, `rgba(255, 255, 200, ${sunnyGlowOpacity * 0.6})`);
+            gradient.addColorStop(0.3, `rgba(255, 240, 150, ${sunnyGlowOpacity * 0.4})`);
+            gradient.addColorStop(0.6, `rgba(255, 220, 100, ${sunnyGlowOpacity * 0.2})`);
+            gradient.addColorStop(1, `rgba(255, 200, 50, 0)`);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.restore();
+        }
+        
+        // Plant class with better graphics
+        class Plant {
+            constructor(x, note, color) {
+                this.x = x;
+                this.note = note;
+                this.height = 30; // Starting height
+                this.maxHeight = 400;
+                this.color = color;
+                this.growthSpeed = 2;
+                this.targetHeight = 30;
+                this.leaves = [];
+                this.branches = [];
+                this.plantType = Math.floor(Math.random() * 3); // 0, 1, or 2 for different plant types
+                this.curveOffset = (Math.random() - 0.5) * 8; // Store curve offset
+                this.generateLeaves();
+                this.generateBranches();
+            }
+            
+            generateLeaves() {
+                // Generate random leaf positions along the stem
+                const numLeaves = Math.floor(Math.random() * 4) + 3;
+                this.leaves = [];
+                for (let i = 0; i < numLeaves; i++) {
+                    this.leaves.push({
+                        y: 0.2 + Math.random() * 0.6, // Position along stem (0-1)
+                        size: Math.random() * 12 + 8,
+                        angle: (Math.random() - 0.5) * 80, // Angle in degrees
+                        width: Math.random() * 8 + 6
+                    });
+                }
+            }
+            
+            generateBranches() {
+                // Generate small branches for more realistic look
+                const numBranches = Math.floor(Math.random() * 2) + 1;
+                this.branches = [];
+                for (let i = 0; i < numBranches; i++) {
+                    this.branches.push({
+                        y: 0.3 + Math.random() * 0.4,
+                        length: Math.random() * 15 + 10,
+                        angle: (Math.random() - 0.5) * 60,
+                        side: Math.random() > 0.5 ? 1 : -1
+                    });
+                }
+            }
+            
+            grow(amount = 20) {
+                this.targetHeight = Math.min(this.targetHeight + amount, this.maxHeight);
+            }
+            
+            update() {
+                // Smoothly grow to target height
+                if (this.height < this.targetHeight) {
+                    this.height += this.growthSpeed;
+                    if (this.height > this.targetHeight) {
+                        this.height = this.targetHeight;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                const baseY = canvas.height;
+                const topY = baseY - this.height;
+                
+                // Draw main stem with slight curve
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // Draw curved stem for more natural look
+                ctx.beginPath();
+                ctx.moveTo(this.x, baseY);
+                
+                // Add slight curve to stem (using stored offset)
+                const midX = this.x + this.curveOffset;
+                const midY = baseY - this.height * 0.5;
+                ctx.quadraticCurveTo(midX, midY, this.x, topY);
+                ctx.stroke();
+                
+                // Draw branches
+                ctx.lineWidth = 3;
+                this.branches.forEach(branch => {
+                    const branchY = baseY - (this.height * branch.y);
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, branchY);
+                    const branchEndX = this.x + (branch.side * branch.length * Math.cos((branch.angle * Math.PI) / 180));
+                    const branchEndY = branchY - (branch.length * Math.sin((branch.angle * Math.PI) / 180));
+                    ctx.lineTo(branchEndX, branchEndY);
+                    ctx.stroke();
+                });
+                
+                // Draw leaves with more detail
+                ctx.fillStyle = this.color;
+                this.leaves.forEach(leaf => {
+                    const leafY = baseY - (this.height * leaf.y);
+                    ctx.save();
+                    ctx.translate(this.x, leafY);
+                    ctx.rotate((leaf.angle * Math.PI) / 180);
+                    
+                    // Draw leaf shape (more realistic)
+                    ctx.beginPath();
+                    // Leaf shape: pointed oval
+                    ctx.ellipse(0, 0, leaf.width, leaf.size, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add leaf vein
+                    ctx.strokeStyle = `rgba(0, 0, 0, 0.2)`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -leaf.size);
+                    ctx.lineTo(0, leaf.size);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                });
+                
+                // Draw plant top based on type
+                ctx.fillStyle = this.color;
+                if (this.plantType === 0) {
+                    // Simple bud
+                    ctx.beginPath();
+                    ctx.arc(this.x, topY, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.plantType === 1) {
+                    // Small leaves at top
+                    for (let i = 0; i < 3; i++) {
+                        const angle = (i * 120 - 60) * Math.PI / 180;
+                        ctx.save();
+                        ctx.translate(this.x, topY);
+                        ctx.rotate(angle);
+                        ctx.beginPath();
+                        ctx.ellipse(0, -8, 6, 10, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                } else {
+                    // Flower bud
+                    ctx.beginPath();
+                    ctx.arc(this.x, topY, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = `rgba(255, 200, 100, 0.8)`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, topY, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Flower class
+        class Flower {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.scale = 0;
+                this.targetScale = 1.2;
+                this.petals = 8;
+                this.rotation = 0;
+                this.age = 0;
+                this.maxAge = 300; // Frames before fading
+            }
+            
+            update() {
+                // Smooth scaling animation
+                if (this.scale < this.targetScale) {
+                    this.scale += 0.08;
+                    if (this.scale > this.targetScale) {
+                        this.scale = this.targetScale;
+                    }
+                }
+                this.rotation += 1;
+                this.age = (this.age || 0) + 1;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Calculate opacity based on age (fade out after reaching target scale)
+                let opacity = 1;
+                if (this.scale >= this.targetScale) {
+                    opacity = Math.max(0, 1 - (this.age - 60) / (this.maxAge - 60));
+                }
+                
+                ctx.scale(this.scale, this.scale);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                
+                // Draw petals
+                for (let i = 0; i < this.petals; i++) {
+                    const angle = (i / this.petals) * Math.PI * 2;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * opacity})`;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -25, 15, 25, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // Draw center
+                ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            isComplete() {
+                return this.age > this.maxAge;
+            }
+        }
+        
+        // Find a good x position for a new plant
+        function findPlantPosition() {
+            if (plantPositions.length === 0) {
+                return canvas.width / 2;
+            }
+            
+            // Try to find a spot with enough spacing
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const x = Math.random() * (canvas.width - 100) + 50;
+                let valid = true;
+                
+                for (const pos of plantPositions) {
+                    if (Math.abs(x - pos) < plantSpacing) {
+                        valid = false;
+                        break;
+                    }
+                }
+                
+                if (valid) {
+                    return x;
+                }
+            }
+            
+            // If no good spot found, use a random position anyway
+            return Math.random() * (canvas.width - 100) + 50;
+        }
+        
+        // Get color based on note
+        function getNoteColor(note) {
+            // Create a color palette based on note - darker colors for visibility on light background
+            const hue = MusicMath.map(note, 48, 84, 100, 200); // Green to cyan range
+            const saturation = 50 + (note % 12) * 4;
+            const lightness = 25 + (note % 7) * 3; // Darker for contrast
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+        
+        // Animation loop
+        function animate() {
+            // Clear canvas with light morning gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(135, 206, 235, 0.1)');
+            gradient.addColorStop(0.5, 'rgba(176, 224, 230, 0.1)');
+            gradient.addColorStop(1, 'rgba(224, 246, 255, 0.1)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground line
+            ctx.strokeStyle = 'rgba(101, 67, 33, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.stroke();
+            
+            // Draw wind first (behind plants)
+            windSystem.update(windSpeed);
+            windSystem.draw();
+            
+            // Gradually decrease wind speed
+            if (windSpeed > 0) {
+                windSpeed = Math.max(0, windSpeed - 0.05);
+            }
+            
+            // Update wind speed display
+            document.getElementById('wind-speed').textContent = Math.floor(windSpeed);
+            
+            // Update sunny glow opacity
+            if (sunnyGlowActive) {
+                sunnyGlowOpacity += (sunnyGlowTargetOpacity - sunnyGlowOpacity) * 0.05;
+            } else {
+                sunnyGlowOpacity += (0 - sunnyGlowOpacity) * 0.05;
+            }
+            
+            // Draw sunny glow (behind plants, in front of wind)
+            drawSunnyGlow();
+            
+            // Update and draw plants (on top of wind and sunny glow)
+            plants.forEach(plant => {
+                plant.update();
+                plant.draw();
+            });
+            
+            // Update and draw flowers
+            flowers = flowers.filter(flower => {
+                flower.update();
+                flower.draw();
+                return !flower.isComplete(); // Remove when faded out
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Handle note on
+        function handleNoteOn(e) {
+            const { note, key } = e.detail;
+            
+            // Play the note
+            outputManager.playNote(note, 0.3, 0.7);
+            
+            // Check if this key already has a plant
+            if (plants.has(key)) {
+                // Grow existing plant
+                const plant = plants.get(key);
+                plant.grow(30);
+            } else {
+                // Create new plant
+                if (plants.size >= maxPlants) {
+                    // Remove oldest plant if we've reached max
+                    const firstKey = plants.keys().next().value;
+                    const oldPlant = plants.get(firstKey);
+                    const index = plantPositions.indexOf(oldPlant.x);
+                    if (index > -1) {
+                        plantPositions.splice(index, 1);
+                    }
+                    plants.delete(firstKey);
+                }
+                
+                const x = findPlantPosition();
+                plantPositions.push(x);
+                const color = getNoteColor(note);
+                const plant = new Plant(x, note, color);
+                plants.set(key, plant);
+            }
+            
+            // Update plant count
+            document.getElementById('plant-count').textContent = plants.size;
+        }
+        
+        // Handle all keyboard input (for both music and text)
+        function handleAllKeys(e) {
+            // Don't interfere with input fields or buttons
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') {
+                return;
+            }
+            
+            const editor = document.getElementById('editorContent');
+            const isEditorFocused = editorVisible && document.activeElement === editor;
+            
+            // Handle special keys
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleSpacebar();
+                if (isEditorFocused) {
+                    // Space is handled by contenteditable naturally
+                } else if (editorVisible) {
+                    editor.textContent += ' ';
+                    updateEditorStats();
+                }
+                return;
+            } else if (e.key === '\\' || e.code === 'Backslash') {
+                e.preventDefault();
+                windSpeed = Math.min(windSpeed + 2, maxWindSpeed);
+                if (isEditorFocused) {
+                    // Backslash is handled by contenteditable naturally
+                } else if (editorVisible) {
+                    editor.textContent += '\\';
+                    updateEditorStats();
+                }
+                return;
+            } else if (e.key === 'Enter') {
+                if (isEditorFocused) {
+                    // Let editor handle Enter naturally
+                    setTimeout(updateEditorStats, 0);
+                    return;
+                }
+                e.preventDefault();
+                // Enter key - play a note
+                outputManager.playNote(72, 0.3, 0.7);
+                if (editorVisible) {
+                    editor.textContent += '\n';
+                    updateEditorStats();
+                }
+                return;
+            } else if (e.key === 'Backspace') {
+                if (isEditorFocused) {
+                    // Let editor handle backspace naturally
+                    setTimeout(updateEditorStats, 0);
+                    return;
+                }
+                // Backspace - play a note
+                e.preventDefault();
+                outputManager.playNote(48, 0.2, 0.5);
+                if (editorVisible && editor.textContent.length > 0) {
+                    editor.textContent = editor.textContent.slice(0, -1);
+                    updateEditorStats();
+                }
+                return;
+            }
+            
+            const key = e.key.toLowerCase();
+            const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+            
+            // If editor is focused, handle text input
+            if (isEditorFocused) {
+                // For printable characters, let the editor handle them naturally via contenteditable
+                // But also play a note if mapped
+                if (extendedKeyMap[key] !== undefined && isPrintable) {
+                    const note = extendedKeyMap[key];
+                    outputManager.playNote(note, 0.2, 0.5); // Quieter when typing
+                }
+                // Editor will handle the text input naturally via contenteditable
+                setTimeout(updateEditorStats, 0);
+                return;
+            }
+            
+            // When editor is NOT focused, capture all keystrokes
+            if (isPrintable) {
+                // Check extended key map for mapped keys
+                if (extendedKeyMap[key] !== undefined) {
+                    e.preventDefault();
+                    const note = extendedKeyMap[key];
+                    
+                    // Emit note-on event to trigger plant growth
+                    inputManager.emitMusicalEvent('note-on', {
+                        note: note,
+                        velocity: 0.7,
+                        key: key
+                    });
+                } else {
+                    // For unmapped printable keys, still play a default note
+                    e.preventDefault();
+                    const defaultNote = 60 + (key.charCodeAt(0) % 24); // Map to a note
+                    outputManager.playNote(defaultNote, 0.5, 0.6);
+                    inputManager.emitMusicalEvent('note-on', {
+                        note: defaultNote,
+                        velocity: 0.6,
+                        key: key
+                    });
+                }
+                
+                // Always add to editor if visible
+                if (editorVisible) {
+                    editor.textContent += e.key;
+                    updateEditorStats();
+                }
+            }
+        }
+        
+        // Update editor statistics
+        function updateEditorStats() {
+            const content = document.getElementById('editorContent').textContent;
+            const charCount = content.length;
+            const lineCount = content.split('\n').length;
+            document.getElementById('char-count').textContent = charCount;
+            document.getElementById('line-count').textContent = lineCount;
+        }
+        
+        // Toggle editor visibility
+        function toggleEditor() {
+            editorVisible = !editorVisible;
+            const editor = document.getElementById('textEditor');
+            const toggleBtn = document.getElementById('toggleEditor');
+            
+            if (editorVisible) {
+                editor.classList.remove('hidden');
+                toggleBtn.textContent = '📝 Hide Editor';
+            } else {
+                editor.classList.add('hidden');
+                toggleBtn.textContent = '📝 Show Editor';
+            }
+        }
+        
+        // Handle spacebar for flower
+        function handleSpacebar() {
+            // Create flower at random position
+            const x = Math.random() * (canvas.width - 100) + 50;
+            const y = Math.random() * (canvas.height * 0.3) + canvas.height * 0.2;
+            const flower = new Flower(x, y);
+            flowers.push(flower);
+        }
+        
+        // Initialize
+        async function init() {
+            if (initialized) return;
+            initialized = true;
+            
+            outputManager = new AudioOutputManager();
+            await outputManager.init();
+            await outputManager.setOutput('tonejs', {});
+            
+            inputManager = new InputManager();
+            await inputManager.enableInput('keyboard', { layout: 'piano' });
+            
+            inputManager.addEventListener('note-on', handleNoteOn);
+            
+            // Handle all keyboard input (including extended keys)
+            document.addEventListener('keydown', handleAllKeys);
+            
+            // Handle Caps Lock for sunny glow
+            let capsLockPressed = false;
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'CapsLock' && !capsLockPressed) {
+                    capsLockPressed = true;
+                    e.preventDefault();
+                    sunnyGlowActive = !sunnyGlowActive;
+                    if (sunnyGlowActive) {
+                        sunnyGlowTargetOpacity = 0.5;
+                        playSunnyHarmony(false); // Play forward
+                        console.log('☀️ Sunny glow activated');
+                    } else {
+                        sunnyGlowTargetOpacity = 0;
+                        playSunnyHarmony(true); // Play in reverse
+                        console.log('☀️ Sunny glow deactivated');
+                    }
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'CapsLock') {
+                    capsLockPressed = false;
+                }
+            });
+            
+            // Setup editor toggle
+            document.getElementById('toggleEditor').addEventListener('click', toggleEditor);
+            
+            // Update editor stats on input
+            const editorContent = document.getElementById('editorContent');
+            editorContent.addEventListener('input', updateEditorStats);
+            
+            // Handle editor focus
+            editorContent.addEventListener('focus', () => {
+                isTypingInEditor = true;
+            });
+            
+            editorContent.addEventListener('blur', () => {
+                isTypingInEditor = false;
+            });
+            
+            // Dismiss instructions button
+            document.getElementById('dismissBtn').addEventListener('click', () => {
+                document.getElementById('instructions').classList.add('hidden');
+            });
+            
+            // Prevent default behavior for keys in editor to allow natural typing
+            editorContent.addEventListener('keydown', (e) => {
+                // Allow normal text editing keys
+                if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                    return; // Let it work normally
+                }
+                // Allow Ctrl/Cmd combinations
+                if (e.ctrlKey || e.metaKey) {
+                    return; // Let shortcuts work
+                }
+                // Don't prevent default for printable characters when editor is focused
+                // This allows contenteditable to work naturally
+            });
+            
+            // Start animation loop
+            animate();
+            
+            console.log('✅ Plant Growing Keyboard ready!');
+        }
+        
+        // Start on any user interaction
+        document.addEventListener('click', init, { once: true });
+        document.addEventListener('keydown', init, { once: true });
+    </script>
+</body>
+</html>
