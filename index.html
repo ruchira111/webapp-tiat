@@ -111,6 +111,48 @@
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
         }
         
+        .toggle-switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-switch-label {
+            font-size: 0.9em;
+            color: #1a1a2e;
+            opacity: 0.9;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #4caf50;
+        }
+        
+        .toggle-switch-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .toggle-switch.active .toggle-switch-knob {
+            transform: translateX(24px);
+        }
+        
         .text-editor.hidden {
             display: none;
         }
@@ -230,9 +272,17 @@
     <div id="wrapper">
         <div class="top-bar">
             <div class="title">🌱 Plant Growing Keyboard</div>
-            <div style="font-size: 0.9em; color: #1a1a2e; opacity: 0.9;">
-                Plants: <span id="plant-count">0</span> | 
-                Wind: <span id="wind-speed">0</span>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="toggle-switch-container">
+                    <span class="toggle-switch-label">Pixel Mode</span>
+                    <div class="toggle-switch" id="styleToggle" title="Toggle between smooth and pixel art style">
+                        <div class="toggle-switch-knob"></div>
+                    </div>
+                </div>
+                <div style="font-size: 0.9em; color: #1a1a2e; opacity: 0.9;">
+                    Plants: <span id="plant-count">0</span> | 
+                    Wind: <span id="wind-speed">0</span>
+                </div>
             </div>
         </div>
         
@@ -296,6 +346,9 @@
         let sunnyGlowActive = false;
         let sunnyGlowOpacity = 0;
         let sunnyGlowTargetOpacity = 0;
+        
+        // Style mode: true = pixel art, false = smooth
+        let pixelMode = false;
         
         // Text editor state
         let editorVisible = false;
@@ -502,10 +555,48 @@
                 }
             }
             
-            draw() {
+            // Helper function to draw pixel blocks
+            drawPixelBlock(x, y, width, height, color, outline = true) {
+                const pixelSize = 2; // Size of each pixel
+                const blockX = Math.floor(x / pixelSize) * pixelSize;
+                const blockY = Math.floor(y / pixelSize) * pixelSize;
+                const blockW = Math.ceil(width / pixelSize) * pixelSize;
+                const blockH = Math.ceil(height / pixelSize) * pixelSize;
+                
+                // Draw fill
+                ctx.fillStyle = color;
+                ctx.fillRect(blockX, blockY, blockW, blockH);
+                
+                // Draw outline
+                if (outline) {
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.lineWidth = pixelSize;
+                    ctx.strokeRect(blockX, blockY, blockW, blockH);
+                }
+            }
+            
+            // Helper function to get darker shade for outlines
+            getDarkerColor(color, amount = 0.3) {
+                // Convert HSL or RGB to darker version
+                if (color.startsWith('hsl')) {
+                    // Extract lightness and reduce it
+                    const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%/);
+                    if (match) {
+                        const lightness = Math.max(0, parseInt(match[3]) - amount * 100);
+                        return `hsl(${match[1]}, ${match[2]}%, ${lightness}%)`;
+                    }
+                }
+                return 'rgba(0, 0, 0, 0.8)';
+            }
+            
+            drawSmooth() {
+                // Original smooth rendering
                 ctx.save();
                 const baseY = canvas.height;
                 const topY = baseY - this.height;
+                
+                // Enable smoothing for smooth rendering
+                ctx.imageSmoothingEnabled = true;
                 
                 // Draw main stem with slight curve
                 ctx.strokeStyle = this.color;
@@ -545,7 +636,6 @@
                     
                     // Draw leaf shape (more realistic)
                     ctx.beginPath();
-                    // Leaf shape: pointed oval
                     ctx.ellipse(0, 0, leaf.width, leaf.size, 0, 0, Math.PI * 2);
                     ctx.fill();
                     
@@ -592,6 +682,149 @@
                 
                 ctx.restore();
             }
+            
+            drawPixel() {
+                // Pixel art rendering
+                ctx.save();
+                const baseY = Math.floor(canvas.height);
+                const topY = Math.floor(baseY - this.height);
+                const pixelX = Math.floor(this.x);
+                const pixelSize = 2;
+                
+                // Disable smoothing for pixel art
+                ctx.imageSmoothingEnabled = false;
+                
+                // Convert color to darker brown for stem (pixel art style)
+                const stemColor = '#8B4513'; // Brown color
+                const darkOutline = '#654321'; // Darker brown for outline
+                
+                // Draw stem as pixel blocks (vertical rectangles)
+                const stemWidth = 6; // pixel width
+                const stemBlocks = Math.ceil(this.height / pixelSize);
+                
+                for (let i = 0; i < stemBlocks; i++) {
+                    const y = Math.floor(baseY - (i * pixelSize));
+                    const blockX = Math.floor((pixelX - stemWidth / 2) / pixelSize) * pixelSize;
+                    const blockY = Math.floor(y / pixelSize) * pixelSize;
+                    
+                    // Main stem block
+                    ctx.fillStyle = stemColor;
+                    ctx.fillRect(blockX, blockY, stemWidth, pixelSize);
+                    
+                    // Outline
+                    ctx.strokeStyle = darkOutline;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(blockX, blockY, stemWidth, pixelSize);
+                }
+                
+                // Draw branches (simplified pixel blocks)
+                this.branches.forEach(branch => {
+                    const branchY = Math.floor(baseY - (this.height * branch.y));
+                    const branchLength = Math.floor(branch.length / pixelSize) * pixelSize;
+                    const branchX = Math.floor(pixelX + (branch.side * branchLength * 0.7));
+                    
+                    for (let i = 0; i < branchLength / pixelSize; i++) {
+                        const bx = Math.floor((pixelX + (branch.side * i * pixelSize)) / pixelSize) * pixelSize;
+                        const by = Math.floor((branchY + (i * pixelSize * 0.5)) / pixelSize) * pixelSize;
+                        
+                        ctx.fillStyle = stemColor;
+                        ctx.fillRect(bx, by, pixelSize * 2, pixelSize);
+                        ctx.strokeStyle = darkOutline;
+                        ctx.strokeRect(bx, by, pixelSize * 2, pixelSize);
+                    }
+                });
+                
+                // Draw leaves as pixel blocks
+                this.leaves.forEach(leaf => {
+                    const leafY = Math.floor(baseY - (this.height * leaf.y));
+                    const leafX = pixelX;
+                    
+                    // Convert color to pixel-friendly green shades
+                    const leafColor = this.color;
+                    const leafDark = this.getDarkerColor(leafColor, 0.2);
+                    
+                    // Draw leaf as rounded block (simplified pixel art)
+                    const leafW = Math.ceil(leaf.width / pixelSize) * pixelSize;
+                    const leafH = Math.ceil(leaf.size / pixelSize) * pixelSize;
+                    
+                    // Position based on angle
+                    const angle = leaf.angle;
+                    const offsetX = Math.floor(Math.cos((angle * Math.PI) / 180) * leafW);
+                    const offsetY = Math.floor(Math.sin((angle * Math.PI) / 180) * leafH);
+                    
+                    const leafBlockX = Math.floor((leafX + offsetX - leafW / 2) / pixelSize) * pixelSize;
+                    const leafBlockY = Math.floor((leafY + offsetY - leafH / 2) / pixelSize) * pixelSize;
+                    
+                    // Draw leaf blocks (rounded effect with pixels)
+                    ctx.fillStyle = leafColor;
+                    ctx.fillRect(leafBlockX, leafBlockY, leafW, leafH);
+                    
+                    // Draw outline
+                    ctx.strokeStyle = darkOutline;
+                    ctx.lineWidth = pixelSize;
+                    ctx.strokeRect(leafBlockX, leafBlockY, leafW, leafH);
+                    
+                    // Add leaf vein (vertical line)
+                    const veinX = leafBlockX + leafW / 2;
+                    ctx.strokeStyle = darkOutline;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.floor(veinX / pixelSize) * pixelSize, leafBlockY);
+                    ctx.lineTo(Math.floor(veinX / pixelSize) * pixelSize, leafBlockY + leafH);
+                    ctx.stroke();
+                });
+                
+                // Draw plant top based on type (pixel art style)
+                if (this.plantType === 0) {
+                    // Simple bud - square block
+                    const budSize = 6;
+                    const budX = Math.floor((pixelX - budSize / 2) / pixelSize) * pixelSize;
+                    const budY = Math.floor((topY - budSize / 2) / pixelSize) * pixelSize;
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(budX, budY, budSize, budSize);
+                    ctx.strokeStyle = darkOutline;
+                    ctx.strokeRect(budX, budY, budSize, budSize);
+                } else if (this.plantType === 1) {
+                    // Small pixel leaves at top
+                    for (let i = 0; i < 3; i++) {
+                        const angle = (i * 120 - 60) * Math.PI / 180;
+                        const offsetX = Math.cos(angle) * 8;
+                        const offsetY = Math.sin(angle) * 8;
+                        const leafX = Math.floor((pixelX + offsetX) / pixelSize) * pixelSize;
+                        const leafY = Math.floor((topY + offsetY) / pixelSize) * pixelSize;
+                        
+                        ctx.fillStyle = this.color;
+                        ctx.fillRect(leafX - 3, leafY - 3, 6, 6);
+                        ctx.strokeStyle = darkOutline;
+                        ctx.strokeRect(leafX - 3, leafY - 3, 6, 6);
+                    }
+                } else {
+                    // Flower bud - center circle with pixel effect
+                    const centerX = Math.floor((pixelX - 4) / pixelSize) * pixelSize;
+                    const centerY = Math.floor((topY - 4) / pixelSize) * pixelSize;
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(centerX, centerY, 8, 8);
+                    ctx.strokeStyle = darkOutline;
+                    ctx.strokeRect(centerX, centerY, 8, 8);
+                    
+                    // Inner yellow circle
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(centerX + 2, centerY + 2, 4, 4);
+                }
+                
+                ctx.restore();
+            }
+            
+            draw() {
+                // Call appropriate draw method based on mode
+                if (pixelMode) {
+                    this.drawPixel();
+                } else {
+                    this.drawSmooth();
+                }
+            }
         }
         
         // Flower class
@@ -605,6 +838,7 @@
                 this.rotation = 0;
                 this.age = 0;
                 this.maxAge = 300; // Frames before fading
+                this.pixelSize = 2; // Pixel size for pixel art
             }
             
             update() {
@@ -619,14 +853,20 @@
                 this.age = (this.age || 0) + 1;
             }
             
-            draw() {
+            drawSmooth() {
+                // Original smooth flower rendering
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 
-                // Calculate opacity based on age (fade out after reaching target scale)
+                // Calculate opacity based on age
                 let opacity = 1;
                 if (this.scale >= this.targetScale) {
                     opacity = Math.max(0, 1 - (this.age - 60) / (this.maxAge - 60));
+                }
+                
+                if (opacity <= 0) {
+                    ctx.restore();
+                    return;
                 }
                 
                 ctx.scale(this.scale, this.scale);
@@ -651,6 +891,130 @@
                 ctx.fill();
                 
                 ctx.restore();
+            }
+            
+            drawPixel() {
+                // Pixel art flower rendering
+                // Calculate opacity based on age (fade out after reaching target scale)
+                let opacity = 1;
+                if (this.scale >= this.targetScale) {
+                    opacity = Math.max(0, 1 - (this.age - 60) / (this.maxAge - 60));
+                }
+                
+                if (opacity <= 0) return;
+                
+                ctx.save();
+                ctx.imageSmoothingEnabled = false; // Disable smoothing for pixel art
+                
+                const centerX = Math.floor(this.x);
+                const centerY = Math.floor(this.y);
+                const pixelScale = Math.max(1, Math.floor(this.scale * this.pixelSize));
+                
+                // Scale the flower based on animation
+                const baseSize = 24; // Base size in pixels
+                const petalSize = Math.floor(baseSize * this.scale);
+                const centerSize = Math.floor(16 * this.scale);
+                
+                // Draw 4 petals (up, down, left, right) - pixel art style
+                const petalWidth = 12 * this.scale;
+                const petalHeight = 20 * this.scale;
+                
+                // Top petal
+                const topPetalX = Math.floor((centerX - petalWidth / 2) / this.pixelSize) * this.pixelSize;
+                const topPetalY = Math.floor((centerY - petalHeight - centerSize / 2) / this.pixelSize) * this.pixelSize;
+                this.drawPixelPetal(topPetalX, topPetalY, petalWidth, petalHeight, opacity);
+                
+                // Bottom petal
+                const bottomPetalX = Math.floor((centerX - petalWidth / 2) / this.pixelSize) * this.pixelSize;
+                const bottomPetalY = Math.floor((centerY + centerSize / 2) / this.pixelSize) * this.pixelSize;
+                this.drawPixelPetal(bottomPetalX, bottomPetalY, petalWidth, petalHeight, opacity);
+                
+                // Left petal
+                const leftPetalX = Math.floor((centerX - petalHeight - centerSize / 2) / this.pixelSize) * this.pixelSize;
+                const leftPetalY = Math.floor((centerY - petalWidth / 2) / this.pixelSize) * this.pixelSize;
+                this.drawPixelPetal(leftPetalX, leftPetalY, petalHeight, petalWidth, opacity);
+                
+                // Right petal
+                const rightPetalX = Math.floor((centerX + centerSize / 2) / this.pixelSize) * this.pixelSize;
+                const rightPetalY = Math.floor((centerY - petalWidth / 2) / this.pixelSize) * this.pixelSize;
+                this.drawPixelPetal(rightPetalX, rightPetalY, petalHeight, petalWidth, opacity);
+                
+                // Draw yellow center with smiley face
+                const centerXPos = Math.floor((centerX - centerSize / 2) / this.pixelSize) * this.pixelSize;
+                const centerYPos = Math.floor((centerY - centerSize / 2) / this.pixelSize) * this.pixelSize;
+                
+                // Yellow center
+                ctx.fillStyle = `rgba(255, 220, 0, ${opacity})`;
+                ctx.fillRect(centerXPos, centerYPos, centerSize, centerSize);
+                
+                // Black outline for center
+                ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+                ctx.lineWidth = this.pixelSize;
+                ctx.strokeRect(centerXPos, centerYPos, centerSize, centerSize);
+                
+                // Draw smiley face - eyes (2 black pixels)
+                const eyeSize = Math.floor(2 * this.scale);
+                const eyeY = centerYPos + Math.floor(centerSize * 0.3);
+                const eye1X = centerXPos + Math.floor(centerSize * 0.3);
+                const eye2X = centerXPos + Math.floor(centerSize * 0.7);
+                
+                ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+                ctx.fillRect(Math.floor(eye1X / this.pixelSize) * this.pixelSize, Math.floor(eyeY / this.pixelSize) * this.pixelSize, eyeSize, eyeSize);
+                ctx.fillRect(Math.floor(eye2X / this.pixelSize) * this.pixelSize, Math.floor(eyeY / this.pixelSize) * this.pixelSize, eyeSize, eyeSize);
+                
+                // Draw smiley mouth (curved line of pixels)
+                const mouthY = centerYPos + Math.floor(centerSize * 0.7);
+                const mouthLeftX = centerXPos + Math.floor(centerSize * 0.25);
+                const mouthRightX = centerXPos + Math.floor(centerSize * 0.75);
+                const mouthMidX = centerXPos + Math.floor(centerSize * 0.5);
+                const mouthMidY = mouthY + Math.floor(centerSize * 0.15);
+                
+                // Draw curved smile as pixel blocks
+                const mouthPixels = [
+                    {x: mouthLeftX, y: mouthY},
+                    {x: mouthLeftX + Math.floor(centerSize * 0.15), y: mouthY + Math.floor(centerSize * 0.1)},
+                    {x: mouthMidX, y: mouthMidY},
+                    {x: mouthRightX - Math.floor(centerSize * 0.15), y: mouthY + Math.floor(centerSize * 0.1)},
+                    {x: mouthRightX, y: mouthY}
+                ];
+                
+                mouthPixels.forEach(pixel => {
+                    const px = Math.floor(pixel.x / this.pixelSize) * this.pixelSize;
+                    const py = Math.floor(pixel.y / this.pixelSize) * this.pixelSize;
+                    ctx.fillRect(px, py, eyeSize, eyeSize);
+                });
+                
+                ctx.restore();
+            }
+            
+            // Helper method to draw pixel art petals
+            drawPixelPetal(x, y, width, height, opacity) {
+                const pixelW = Math.ceil(width / this.pixelSize) * this.pixelSize;
+                const pixelH = Math.ceil(height / this.pixelSize) * this.pixelSize;
+                
+                // Draw petal fill (white)
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * opacity})`;
+                ctx.fillRect(x, y, pixelW, pixelH);
+                
+                // Draw light gray shading on bottom-right
+                ctx.fillStyle = `rgba(230, 230, 230, ${0.5 * opacity})`;
+                const shadeW = Math.floor(pixelW * 0.3);
+                const shadeH = Math.floor(pixelH * 0.3);
+                ctx.fillRect(x + pixelW - shadeW, y + pixelH - shadeH, shadeW, shadeH);
+                
+                // Draw black outline
+                ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
+                ctx.lineWidth = this.pixelSize;
+                ctx.strokeRect(x, y, pixelW, pixelH);
+            }
+            
+            draw() {
+                // Call appropriate draw method based on mode
+                if (pixelMode) {
+                    this.drawPixel();
+                } else {
+                    this.drawSmooth();
+                }
             }
             
             isComplete() {
@@ -694,15 +1058,18 @@
             return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         }
         
-        // Animation loop
-        function animate() {
-            // Clear canvas with light morning gradient background
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, 'rgba(135, 206, 235, 0.1)');
-            gradient.addColorStop(0.5, 'rgba(176, 224, 230, 0.1)');
-            gradient.addColorStop(1, 'rgba(224, 246, 255, 0.1)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Animation loop
+            function animate() {
+                // Clear canvas with light morning gradient background
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, 'rgba(135, 206, 235, 0.1)');
+                gradient.addColorStop(0.5, 'rgba(176, 224, 230, 0.1)');
+                gradient.addColorStop(1, 'rgba(224, 246, 255, 0.1)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+            // Set image smoothing based on mode
+            ctx.imageSmoothingEnabled = !pixelMode;
             
             // Draw ground line
             ctx.strokeStyle = 'rgba(101, 67, 33, 0.8)';
@@ -973,6 +1340,17 @@
             
             // Setup editor toggle
             document.getElementById('toggleEditor').addEventListener('click', toggleEditor);
+            
+            // Setup style toggle
+            document.getElementById('styleToggle').addEventListener('click', () => {
+                pixelMode = !pixelMode;
+                const styleToggle = document.getElementById('styleToggle');
+                if (pixelMode) {
+                    styleToggle.classList.add('active');
+                } else {
+                    styleToggle.classList.remove('active');
+                }
+            });
             
             // Update editor stats on input
             const editorContent = document.getElementById('editorContent');
